@@ -1,0 +1,12 @@
+{
+  "name": "couple-uno",
+  "version": "1.0.0",
+  "description": "双人 UNO 情侣小游戏（单机 AI + 联机双模式）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

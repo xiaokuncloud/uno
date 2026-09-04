@@ -1,0 +1,17 @@
+name = "uno-server"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 静态前端（index/game/css/js/图片/音频）由 Worker 自动托管
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Durable Objects：每个房间 = 一个 UnoRoom 实例
+[[durable_objects.bindings]]
+name = "UNO_ROOMS"
+class_name = "UnoRoom"
+
+[observability]
+enabled = true

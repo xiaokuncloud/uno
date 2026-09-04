@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>双人 UNO · 情侣小游戏</title>
+  <link rel="stylesheet" href="/css/style.css?v=13">
+</head>
+<body>
+  <audio id="bgm" src="/assets/bgm.mp3?v=13" loop preload="none"></audio>
+  <button id="bgm-toggle" class="bgm-toggle" aria-label="背景音乐">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  </button>
+  <div class="home">
+    <!-- 精致 SVG Logo：四色渐变 UNO 卡片 + 红心 -->
+    <div class="logo">
+      <img src="/assets/logo3d.png?v=13" alt="双人UNO">
+    </div>
+    <h1>双人 UNO</h1>
+    <p class="sub">情侣 / 好友专属 · 单机练手 & 双人联机</p>
+
+    <button class="btn btn-solo" onclick="goSolo()">单机对战 AI</button>
+    <button class="btn btn-online" onclick="goCreate()">创建联机房间</button>
+
+    <div class="panel">
+      <h3>你的昵称</h3>
+      <div class="row">
+        <input id="name" type="text" placeholder="输入昵称，会帮你记住" maxlength="12">
+      </div>
+      <p class="tip">昵称会自动保存在本机，下次打开还是它。</p>
+    </div>
+
+    <button class="btn btn-ghost" id="join-panel-toggle" onclick="toggleJoin()">我有房间号，加入房间</button>
+    <div id="join-panel" class="panel hidden">
+      <div class="row">
+        <input id="join-room" type="text" placeholder="6位房间号" maxlength="6" inputmode="numeric">
+      </div>
+      <button class="btn btn-sm btn-online" style="margin-top:10px" onclick="goJoin()">加入房间</button>
+    </div>
+
+    <p class="tip foot">联机：创建房间后把「分享链接」或「房间号」发给对方即可；仅支持 2 人对局。</p>
+  </div>
+  <!-- Toast 轻提示 -->
+  <div id="toast" class="toast hidden"></div>
+  <script>
+    // 昵称持久化：进入页面时读取上次保存的昵称
+    (function () {
+      var saved = localStorage.getItem('uno_player_name');
+      if (saved) document.getElementById('name').value = saved;
+    })();
+    // 轻提示（替代原生 alert）
+    var _tt;
+    function toast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      el.classList.add('show');
+      clearTimeout(_tt);
+      _tt = setTimeout(function () {
+        el.classList.remove('show');
+        setTimeout(function () { el.classList.add('hidden'); }, 260);
+      }, 2400);
+    }
+    function saveName() {
+      var v = (document.getElementById('name').value || '').trim();
+      if (!v) v = '玩家' + Math.floor(10 + Math.random() * 89);
+      localStorage.setItem('uno_player_name', v);
+      return v;
+    }
+    function goSolo() {
+      location.href = '/game.html?mode=solo&name=' + encodeURIComponent(saveName());
+    }
+    function goCreate() {
+      location.href = '/game.html?mode=create&name=' + encodeURIComponent(saveName());
+    }
+    function goJoin() {
+      var id = document.getElementById('join-room').value.trim();
+      if (!id) { toast('请输入 6 位房间号'); return; }
+      location.href = '/game.html?mode=join&room=' + id + '&name=' + encodeURIComponent(saveName());
+    }
+    function toggleJoin() {
+      document.getElementById('join-panel').classList.toggle('hidden');
+    }
+    // 背景音乐：首次交互后自动播放，可静音/恢复
+    (function () {
+      var bgm = document.getElementById('bgm');
+      var btn = document.getElementById('bgm-toggle');
+      var on = true;
+      function toggle() {
+        on = !on;
+        if (on) { bgm.play().catch(function(){}); } else { bgm.pause(); }
+        btn.classList.toggle('off', !on);
+      }
+      btn.addEventListener('click', toggle);
+      function first() {
+        bgm.play().catch(function(){});
+        document.removeEventListener('pointerdown', first);
+      }
+      document.addEventListener('pointerdown', first);
+    })();
+  </script>
+</body>
+</html>

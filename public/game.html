@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>双人 UNO · 对局中</title>
+  <link rel="stylesheet" href="/css/style.css?v=13">
+</head>
+<body>
+  <audio id="bgm" src="/assets/bgm.mp3?v=13" loop preload="none"></audio>
+  <div class="game">
+    <!-- 顶部 -->
+    <div class="topbar">
+      <button class="home-btn" onclick="goHome()" aria-label="返回首页">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>
+      </button>
+      <span class="title">双人 UNO</span>
+      <span class="badge" id="mode-badge"></span>
+      <span class="topbar-right">
+        <button class="icon-btn" id="bgm-toggle" aria-label="背景音乐">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openHelp()" aria-label="游戏说明">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4"/><path d="M12 17h.01"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openLog()" aria-label="游戏日志">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </button>
+      </span>
+    </div>
+    <!-- 等待中提示 -->
+    <div id="lobby-box" class="panel hidden" style="text-align:center;margin-top:10px">
+      <p style="font-size:16px;font-weight:700" id="lobby-text">等待中…</p>
+      <p class="tip" id="lobby-tip"></p>
+      <button id="btn-share" class="btn btn-online hidden" onclick="shareRoom()" style="margin-top:8px">复制分享链接，发给好友</button>
+      <button id="btn-start" class="btn btn-online hidden" onclick="onlineStart()">开始游戏</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyRoom()" style="margin-top:8px">复制房间号</button>
+    </div>
+    <!-- 对局界面 -->
+    <div id="game-box" class="hidden" style="display:flex;flex-direction:column;flex:1">
+      <!-- 全局对局提示（牌桌外） -->
+      <div class="game-event"><span id="event-info"></span></div>
+      <!-- 对手区 -->
+      <div class="opponent">
+        <div class="opp-head">
+          <span class="opp-name" id="opp-name">对手</span>
+          <span class="turn-flag hidden" id="opp-turn">出牌中</span>
+        </div>
+        <div class="opp-cards" id="opp-cards"></div>
+        <div class="opp-status" id="opp-status"></div>
+      </div>
+      <!-- 台面 -->
+      <div class="table">
+        <div class="table-card-wrap" id="table-stack"></div>
+      </div>
+      <!-- 手牌区 -->
+      <div class="myzone">
+        <div class="my-head">
+          <span class="my-name" id="my-name">我</span>
+          <span class="my-status" id="my-turn">轮到你出牌</span>
+          <div class="my-actions">
+            <button class="deck-btn" id="btn-draw" onclick="doDraw()">抽牌 <span id="deck-count"></span></button>
+            <button class="mini-btn primary hidden" id="btn-uno" onclick="doCallUno()">UNO</button>
+            <button class="mini-btn warn hidden" id="btn-catch" onclick="doCatchUno()">抓UNO</button>
+            <button class="mini-btn green hidden" id="btn-endturn" onclick="doEndTurn()">结束回合</button>
+            <button class="mini-btn hidden" id="btn-rematch" onclick="doRematch()">再来一局</button>
+          </div>
+        </div>
+        <div class="hand" id="my-hand"></div>
+      </div>
+      <!-- 聊天 -->
+      <div class="chat">
+        <div class="chat-log" id="chat-log"></div>
+        <div class="quick-emoji">
+          <span onclick="sendChat('😘')">😘</span>
+          <span onclick="sendChat('🤗')">🤗</span>
+          <span onclick="sendChat('😤')">😤</span>
+          <span onclick="sendChat('🎉')">🎉</span>
+          <span onclick="sendChat('🥺')">🥺</span>
+          <span onclick="sendChat('🏆')">🏆</span>
+        </div>
+        <div class="row">
+          <input id="chat-input" type="text" placeholder="说点什么…" maxlength="80" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="btn btn-sm btn-online" style="flex:0 0 auto;margin:0" onclick="sendChat()">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- 抽牌定庄弹窗 -->
+  <div class="modal-mask hidden" id="dealer-modal">
+    <div class="modal">
+      <h2>抽牌定庄</h2>
+      <p>双方各抽一张牌，数字大者先出牌</p>
+      <div class="dealer-pick">
+        <div class="dealer-side">
+          <div class="dealer-name" id="dealer-me-name">我</div>
+          <div id="dealer-me-card" class="dealer-card"></div>
+          <div class="dealer-score" id="dealer-me-score"></div>
+        </div>
+        <div class="dealer-vs">VS</div>
+        <div class="dealer-side">
+          <div class="dealer-name" id="dealer-opp-name">对手</div>
+          <div id="dealer-opp-card" class="dealer-card"></div>
+          <div class="dealer-score" id="dealer-opp-score"></div>
+        </div>
+      </div>
+      <p id="dealer-result" class="dealer-result"></p>
+      <button class="btn btn-online btn-sm" onclick="doStartPlay()">开始对局</button>
+    </div>
+  </div>
+  <!-- 选色弹窗 -->
+  <div class="modal-mask hidden" id="color-modal">
+    <div class="modal">
+      <h2>选颜色</h2>
+      <p>打出变色牌，选一个颜色</p>
+      <div class="color-pick" id="color-pick"></div>
+    </div>
+  </div>
+  <!-- +4 质疑弹窗 -->
+  <div class="modal-mask hidden" id="challenge-modal">
+    <div class="modal">
+      <h2>质疑 +4？</h2>
+      <p id="challenge-text"></p>
+      <p id="challenge-hint" class="challenge-hint"></p>
+      <div class="challenge-actions">
+        <button class="btn btn-green btn-sm" style="background:#2a9d4f;color:#fff" onclick="doChallenge(true)">质疑</button>
+        <button class="btn btn-ghost btn-sm" onclick="doChallenge(false)">不质疑</button>
+      </div>
+    </div>
+  </div>
+  <!-- 结算弹窗 -->
+  <div class="modal-mask hidden" id="result-modal">
+    <div class="modal">
+      <h2 id="result-title"></h2>
+      <p id="result-text"></p>
+      <button class="btn btn-green btn-sm" style="background:#2a9d4f;color:#fff;margin-top:4px" id="btn-result-rematch" onclick="doRematch()">再来一局</button>
+      <button class="btn btn-ghost btn-sm" onclick="goHome()">返回首页</button>
+    </div>
+  </div>
+  <!-- 游戏说明弹窗 -->
+  <div class="modal-mask hidden" id="help-modal">
+    <div class="modal modal-scroll">
+      <h2>游戏说明</h2>
+      <div class="help-body">
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.5" fill="currentColor"/></svg> 目标</h3>
+        <p>先出完手牌的玩家获胜。</p>
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 10h8M8 14h5"/></svg> 出牌</h3>
+        <p>出的牌需与顶牌<b>同颜色或同数字</b>；无牌可出时抽 1 张，抽到能出的牌可立即出，或结束回合。</p>
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg> 功能牌</h3>
+        <div class="help-func">
+          <div class="hf"><span class="hf-badge c-red">+2</span><span>对手抽 2 张并跳过回合</span></div>
+          <div class="hf"><span class="hf-badge c-blue">反转</span><span>双人局相当于跳过对手</span></div>
+          <div class="hf"><span class="hf-badge c-yellow">禁止</span><span>跳过对手回合</span></div>
+          <div class="hf"><span class="hf-badge c-green">变色</span><span>选择下一轮的颜色</span></div>
+          <div class="hf"><span class="hf-badge c-black">+4</span><span>选色并让对手抽 4 张跳过</span></div>
+        </div>
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/></svg> 质疑 +4 怎么算？</h3>
+        <p>对手打出 +4 时，你可以选择<b>质疑</b>他是否违规（明明能出普通牌却出 +4）。</p>
+        <p class="qline"><span class="qtag ok">质疑成功</span>：对方手里<b>有可出之牌</b>仍打 +4（违规）→ 对方<b>罚抽 4 张</b>，你免于抽牌。</p>
+        <p class="qline"><span class="qtag bad">质疑失败</span>：对方确实<b>无牌可出</b>（没违规）→ 你<b>抽 6 张</b>并跳过回合。</p>
+        <p class="qline"><span class="qtag neutral">不质疑</span>：正常抽 4 张并跳过。20 秒不选默认不质疑。</p>
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg> UNO 喊牌</h3>
+        <p>剩 1 张牌时必须喊“UNO”，否则对手可抓你罚抽 2 张。</p>
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="3"/><path d="M9 4v16M12 9h5M12 13h5M12 17h3"/></svg> 开局</h3>
+        <p>双方各抽一张牌比大小，数字大者先出牌。</p>
+      </div>
+      <button class="btn btn-online btn-sm" onclick="closeHelp()">知道了</button>
+    </div>
+  </div>
+  <!-- 游戏日志弹窗 -->
+  <div class="modal-mask hidden" id="log-modal">
+    <div class="modal modal-scroll">
+      <h2>对局日志</h2>
+      <div class="log-list" id="log-list"></div>
+      <button class="btn btn-online btn-sm" onclick="closeLog()">关闭</button>
+    </div>
+  </div>
+  <!-- Toast 轻提示 -->
+  <div id="toast" class="toast hidden"></div>
+  <script src="/js/uno-core.js?v=13"></script>
+  <script src="/js/game.js?v=13"></script>
+</body>
+</html>
