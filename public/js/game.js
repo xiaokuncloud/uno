@@ -1064,7 +1064,10 @@
   if (!bgm || !btn) return;
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
-  function playTry() { var p = bgm.play(); if (p && p.catch) p.catch(function(){}); }
+  function playTry() {
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=16');
+    var p = bgm.play(); if (p && p.catch) p.catch(function(){});
+  }
   function apply() {
     btn.classList.toggle('off', !on);
     if (on) playTry(); else bgm.pause();
