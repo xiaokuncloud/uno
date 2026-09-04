@@ -407,9 +407,10 @@ export class UnoRoom {
         // 1) 优先按 selfIndex 精确重连（防止刷新时撞名匹配到房主槽位）
         if (msg.selfIndex != null && msg.selfIndex >= 0 && msg.selfIndex < 2) {
           const slotP = this.players[msg.selfIndex];
-          if (slotP && slotP.offline && slotP.name === joinName) {
+          if (slotP && slotP.offline) {
             slotP.ws = ws;
             slotP.offline = false;
+            slotP.name = joinName || slotP.name;
             if (this.pendingChallenge) {
               const pc = this.pendingChallenge;
               const op = this.players[pc.opp];

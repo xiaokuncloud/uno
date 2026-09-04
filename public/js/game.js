@@ -321,6 +321,7 @@
         break;
       case 'joined':
         S.selfIndex = m.playerIndex;
+        if (m.playerNames && m.playerNames[m.playerIndex]) S.name = m.playerNames[m.playerIndex];
         S.roomId = S.roomId || m.roomId || localStorage.getItem('uno_room_id') || '';
         localStorage.setItem('uno_room_id', S.roomId);
         localStorage.setItem('uno_self_index', String(m.playerIndex));
