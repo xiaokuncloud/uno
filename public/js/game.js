@@ -80,7 +80,7 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.png?v=14" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.png?v=15" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
@@ -287,13 +287,20 @@
       }
       // create 与 join 统一走 joinRoom；若 join 刷新的是本机上次房间，带 selfIndex 精确重连防变房主
       const sameRoom = savedRoom === S.roomId && savedIdx != null;
-      sendWs({ action: 'joinRoom', roomId: S.roomId, name: S.name, selfIndex: sameRoom ? Number(savedIdx) : undefined });
+      let rejoinIdx;
+      if (sameRoom) {
+        const idx = Number(savedIdx);
+        // join 模式下 selfIndex=0 是共享 localStorage 的房主残留，忽略（防抢房主）；玩家2(1) 才精确重连
+        rejoinIdx = (S.mode === 'join' && idx === 0) ? undefined : idx;
+      }
+      sendWs({ action: 'joinRoom', roomId: S.roomId, name: S.name, selfIndex: rejoinIdx });
     };
     S.ws.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
       handleOnlineMsg(m);
     };
     S.ws.onclose = () => {
+      clearInterval(S._hb);
       if (S.mode !== 'solo') {
         appendChat('系统', '连接断开，正在尝试重连…', 'sys');
         if (S._reconnTimer) clearTimeout(S._reconnTimer);
@@ -306,6 +313,13 @@
       }
     };
     S.ws.onerror = () => toast('无法连接服务器，请刷新重试');
+    // 心跳：每 15s 发一条消息，防止 CF 空闲回收 WebSocket 导致房主“悄悄离线”
+    clearInterval(S._hb);
+    S._hb = setInterval(() => {
+      if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+        S.ws.send(JSON.stringify({ action: 'ping' }));
+      }
+    }, 15000);
   }
 
   function handleOnlineMsg(m) {
@@ -800,7 +814,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.png?v=14" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.png?v=15" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {

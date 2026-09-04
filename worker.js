@@ -242,6 +242,7 @@ export class UnoRoom {
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
     if (!msg || !msg.action) return;
+    if (msg.action === 'ping') { this.send(ws, { action: 'pong' }); return; }
     try {
       await this.handleAction(ws, msg);
     } catch (e) {
