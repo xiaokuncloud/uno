@@ -173,6 +173,7 @@ export class UnoRoom {
     this.state = state;
     this.players = [];            // 内存态：{ws, name, index, offline}
     this.game = null;
+    this.scores = [0, 0];          // 房间内累计胜场（仅多局对局有效）
     this.pendingTurnEnd = null;
     this.lastEvent = null;
     this.lastDetail = null;
@@ -194,6 +195,7 @@ export class UnoRoom {
       if (this.players[i]) { this.players[i].ws = s; this.players[i].offline = false; }
     });
     this.game = saved.game || null;
+    this.scores = (saved.scores && saved.scores.length === 2) ? saved.scores : [0, 0];
     this.pendingTurnEnd = saved.pendingTurnEnd != null ? saved.pendingTurnEnd : null;
     this.lastEvent = saved.lastEvent || null;
     this.lastDetail = saved.lastDetail || null;
@@ -207,6 +209,7 @@ export class UnoRoom {
     await this.state.storage.put('room', {
       playersMeta,
       game: this.game,
+      scores: this.scores,
       pendingTurnEnd: this.pendingTurnEnd,
       lastEvent: this.lastEvent,
       lastDetail: this.lastDetail,
@@ -312,6 +315,7 @@ export class UnoRoom {
       winner: g.winner,
       uno: g.uno,
       drawPileCount: g.deck.length,
+      scores: this.scores,
       lastEvent: this.lastEvent,
       lastDetail: this.lastDetail,
       lastPlay: this.lastPlay,
@@ -353,7 +357,8 @@ export class UnoRoom {
       g.phase = 'ended';
       g.winner = playerIndex;
       g.uno[playerIndex] = true;
-      this.pushState('win', `${player.name} 手牌清空，本局获胜！`);
+      this.scores[playerIndex] = (this.scores[playerIndex] || 0) + 1;
+      this.pushState('win', `${player.name} 手牌清空，本局获胜！（比分 ${this.scores[0]}:${this.scores[1]}）`);
       return;
     }
     if (g.hands[playerIndex].length === 1) g.uno[playerIndex] = false;

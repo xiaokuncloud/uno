@@ -282,6 +282,8 @@ input:focus { border-color: #1d7fd6; }
   z-index: 5;
 }
 /* 提示按钮 */
+/* 比分徽章 */
+.score-bar { font-size: 13px; font-weight: 700; color: #e63946; background: rgba(230,57,70,.12); padding: 3px 10px; border-radius: 999px; margin-left: 6px; white-space: nowrap; }
 .hint-btn { background: rgba(244,180,0,.16); color: #b8860b; border: 1px solid rgba(244,180,0,.5); }
 .hint-btn.active { background: #f4b400; color: #fff; box-shadow: 0 0 10px rgba(244,180,0,.5); }
 /* 选颜色：禁止项 */
