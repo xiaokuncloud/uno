@@ -182,11 +182,17 @@ export class UnoRoom {
 
   /* ---- 持久化：storage 保存纯数据，恢复时 ws 重新绑定 ---- */
   async load() {
-    // 内存态已有效（实例活跃，players 含活跃 ws 引用）→ 不覆盖
-    if (this.players.length > 0) return;
+    // 内存态已有效（players 含活跃 ws 引用）→ 不覆盖
+    if (this.players.length > 0 && this.players.some((p) => p && p.ws)) return;
     const saved = await this.state.storage.get('room');
     if (!saved) return;
     this.players = (saved.playersMeta || []).map((p) => ({ ...p, ws: null }));
+    // DO 冻结恢复后 ws 引用丢失：用当前仍活跃的 WebSocket 重新绑定到槽位
+    // （双人房间按加入顺序 accept，getWebSockets() 顺序与 players 索引一致）
+    const socks = this.state.getWebSockets() || [];
+    socks.forEach((s, i) => {
+      if (this.players[i]) { this.players[i].ws = s; this.players[i].offline = false; }
+    });
     this.game = saved.game || null;
     this.pendingTurnEnd = saved.pendingTurnEnd != null ? saved.pendingTurnEnd : null;
     this.lastEvent = saved.lastEvent || null;
@@ -242,7 +248,23 @@ export class UnoRoom {
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
     if (!msg || !msg.action) return;
-    if (msg.action === 'ping') { this.send(ws, { action: 'pong' }); return; }
+    if (msg.action === 'ping' || msg.action === 'reg') {
+      // 客户端主动注册身份：即使 DO 冻结恢复后 ws 引用丢失，也能把活跃连接绑回自己的槽位
+      if (msg.selfIndex != null && msg.selfIndex >= 0 && msg.selfIndex < 2 && this.players[msg.selfIndex]) {
+        this.players[msg.selfIndex].ws = ws;
+        this.players[msg.selfIndex].offline = false;
+      }
+      if (msg.action === 'ping') this.send(ws, { action: 'pong' });
+      return;
+    }
+    // 懒绑定兜底：若当前 ws 未在 players 中（冻结恢复后），绑定到无 ws 的槽位
+    if (this.indexOf(ws) < 0) {
+      const freeIdx = this.players.findIndex((p) => p && !p.ws);
+      if (freeIdx >= 0) {
+        this.players[freeIdx].ws = ws;
+        this.players[freeIdx].offline = false;
+      }
+    }
     try {
       await this.handleAction(ws, msg);
     } catch (e) {

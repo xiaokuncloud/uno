@@ -317,7 +317,7 @@
     clearInterval(S._hb);
     S._hb = setInterval(() => {
       if (S.ws && S.ws.readyState === WebSocket.OPEN) {
-        S.ws.send(JSON.stringify({ action: 'ping' }));
+        S.ws.send(JSON.stringify({ action: 'ping', selfIndex: S.selfIndex }));
       }
     }, 15000);
   }
@@ -327,6 +327,7 @@
       case 'roomCreated':
         S.selfIndex = m.playerIndex;
         S.roomId = m.roomId;
+        sendWs({ action: 'reg', selfIndex: S.selfIndex });
         localStorage.setItem('uno_room_id', m.roomId);
         localStorage.setItem('uno_self_index', String(m.playerIndex));
         modeBadge.textContent = '房间 ' + m.roomId;
@@ -338,6 +339,7 @@
       case 'joined':
         S.selfIndex = m.playerIndex;
         if (m.playerNames && m.playerNames[m.playerIndex]) S.name = m.playerNames[m.playerIndex];
+        sendWs({ action: 'reg', selfIndex: S.selfIndex });
         S.roomId = S.roomId || m.roomId || localStorage.getItem('uno_room_id') || '';
         localStorage.setItem('uno_room_id', S.roomId);
         localStorage.setItem('uno_self_index', String(m.playerIndex));
