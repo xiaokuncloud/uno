@@ -37,9 +37,10 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // 只处理本域资源；WebSocket / 接口请求不缓存
+  // 只处理本域资源；WebSocket / 接口请求 / SW 自身不缓存
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/ws')) return;
+  if (url.pathname === '/sw.js') return;
 
   const isHtml = url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/game.html';
 
