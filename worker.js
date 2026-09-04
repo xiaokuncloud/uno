@@ -261,7 +261,13 @@ export class UnoRoom {
     try { ws.send(JSON.stringify(obj)); } catch (e) {}
   }
   broadcast(obj) {
-    this.players.forEach((p) => { if (p && p.ws && !p.offline) this.send(p.ws, obj); });
+    this.players.forEach((p) => {
+      if (p && p.ws && !p.offline) {
+        const msg = { ...obj };
+        if (obj.action === 'state') msg.game = this.snapshotFor(p.index);
+        this.send(p.ws, msg);
+      }
+    });
   }
   snapshotFor(selfIndex) {
     const g = this.game;
