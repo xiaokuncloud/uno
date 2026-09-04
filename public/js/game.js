@@ -274,18 +274,20 @@
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     S.ws = new WebSocket(`${proto}://${location.host}/ws?room=${encodeURIComponent(S.roomId || 'lobby')}`);
     S.ws.onopen = () => {
-      // 优先重连上次对局（localStorage 存有房间号）
+      // 优先重连上次对局（localStorage 存有房间号，且当前未显式 join 其它房间）
       const savedRoom = localStorage.getItem('uno_room_id');
-      if (savedRoom && !(S.mode === 'join' && params.get('room'))) {
+      const savedIdx = localStorage.getItem('uno_self_index');
+      const isJoinWithRoom = S.mode === 'join' && params.get('room');
+      if (savedRoom && !isJoinWithRoom) {
         S.reconnecting = true;
         S.roomId = savedRoom;
         S.mode = 'join';
-        const savedIdx = localStorage.getItem('uno_self_index');
         sendWs({ action: 'joinRoom', roomId: savedRoom, name: S.name, selfIndex: savedIdx != null ? Number(savedIdx) : undefined });
         return;
       }
-      // create 与 join 统一走 joinRoom（DO 内第一个连接=房主，第二个=玩家2）
-      sendWs({ action: 'joinRoom', roomId: S.roomId, name: S.name });
+      // create 与 join 统一走 joinRoom；若 join 刷新的是本机上次房间，带 selfIndex 精确重连防变房主
+      const sameRoom = savedRoom === S.roomId && savedIdx != null;
+      sendWs({ action: 'joinRoom', roomId: S.roomId, name: S.name, selfIndex: sameRoom ? Number(savedIdx) : undefined });
     };
     S.ws.onmessage = (e) => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
@@ -597,8 +599,7 @@
   /** 分享：本地生成二维码 + 链接（对方扫码/点开自动加入本房间） */
   function shareRoom() {
     const link = location.origin + '/game.html?mode=join&room=' + S.roomId;
-    const inp = $('share-link-input');
-    if (inp) inp.value = link;
+    S._shareLink = link;
     try {
       const qrLib = qrcode(0, 'M');
       qrLib.addData(link);
@@ -627,8 +628,9 @@
     if (modal) modal.classList.remove('hidden');
   }
   function copyShareLink() {
-    const inp = $('share-link-input');
-    if (inp) { copyText(inp.value); toast('链接已复制，发给好友即可加入'); }
+    const link = S._shareLink || (location.origin + '/game.html?mode=join&room=' + S.roomId);
+    copyText(link);
+    toast('链接已复制，发给好友点开即可加入');
   }
   function closeShare() {
     const modal = $('share-modal');

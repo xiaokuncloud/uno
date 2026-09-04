@@ -184,13 +184,8 @@
       <div class="share-qr-box">
         <img id="share-qr" width="210" height="210" alt="分享二维码">
       </div>
-      <div class="share-link-row">
-        <input id="share-link-input" type="text" readonly>
-        <button class="btn btn-online btn-sm" onclick="copyShareLink()">复制链接</button>
-      </div>
-      <div class="share-actions">
-        <button class="btn btn-ghost btn-sm" onclick="closeShare()">关闭</button>
-      </div>
+      <button class="btn btn-online share-copy" onclick="copyShareLink()">复制链接</button>
+      <button class="btn btn-ghost share-close" onclick="closeShare()">关闭</button>
     </div>
   </div>
   <!-- Toast 轻提示 -->
