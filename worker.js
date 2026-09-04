@@ -403,7 +403,29 @@ export class UnoRoom {
       case 'joinRoom': {
         try { await this.state.storage.deleteAlarm(); } catch (e) {} // 有人进房，取消销毁
         const roomId = String(msg.roomId || '');
-        const joinName = String(msg.name || '').slice(0, 12);
+        let joinName = String(msg.name || '').slice(0, 12);
+        // 1) 优先按 selfIndex 精确重连（防止刷新时撞名匹配到房主槽位）
+        if (msg.selfIndex != null && msg.selfIndex >= 0 && msg.selfIndex < 2) {
+          const slotP = this.players[msg.selfIndex];
+          if (slotP && slotP.offline && slotP.name === joinName) {
+            slotP.ws = ws;
+            slotP.offline = false;
+            if (this.pendingChallenge) {
+              const pc = this.pendingChallenge;
+              const op = this.players[pc.opp];
+              if (op && op.ws && !op.offline) this.send(op.ws, { action: 'offerChallenge', byName: this.players[pc.target].name });
+            }
+            if (this.game) {
+              this.pushState('rejoin', `${this.players[slotP.index].name} 重新连接`);
+            } else {
+              this.send(ws, { action: 'joined', playerIndex: slotP.index, playerNames: this.players.map((p) => p.name), reconnected: true });
+              const other = this.players.find((p) => !p.offline && p.ws !== ws);
+              if (other) this.send(other.ws, { action: 'peerJoined', playerNames: this.players.map((p) => p.name) });
+            }
+            return;
+          }
+        }
+        // 2) 按名字找离线槽位（兼容旧逻辑）
         const slot = this.players.findIndex((p) => p.offline && p.name === joinName);
         if (slot >= 0) {
           this.players[slot].ws = ws;
@@ -428,6 +450,8 @@ export class UnoRoom {
           this.players.push({ ws, name: joinName || '玩家1', index: 0, offline: false });
           this.send(ws, { action: 'roomCreated', roomId, playerIndex: 0 });
         } else {
+          // 玩家2 加入时若与房主撞名，自动加序号，避免刷新重连匹配错位
+          if (joinName === this.players[0].name) joinName = joinName + '2';
           this.players.push({ ws, name: joinName || '玩家2', index: 1, offline: false });
           this.send(ws, { action: 'joined', playerIndex: 1, playerNames: this.players.map((p) => p.name) });
           const host = this.players[0];

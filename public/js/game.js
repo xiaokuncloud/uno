@@ -280,7 +280,8 @@
         S.reconnecting = true;
         S.roomId = savedRoom;
         S.mode = 'join';
-        sendWs({ action: 'joinRoom', roomId: savedRoom, name: S.name });
+        const savedIdx = localStorage.getItem('uno_self_index');
+        sendWs({ action: 'joinRoom', roomId: savedRoom, name: S.name, selfIndex: savedIdx != null ? Number(savedIdx) : undefined });
         return;
       }
       // create 与 join 统一走 joinRoom（DO 内第一个连接=房主，第二个=玩家2）
@@ -308,8 +309,10 @@
   function handleOnlineMsg(m) {
     switch (m.action) {
       case 'roomCreated':
+        S.selfIndex = m.playerIndex;
         S.roomId = m.roomId;
         localStorage.setItem('uno_room_id', m.roomId);
+        localStorage.setItem('uno_self_index', String(m.playerIndex));
         modeBadge.textContent = '房间 ' + m.roomId;
         lobbyBox.classList.remove('hidden');
         lobbyText.textContent = '房间已创建，房间号 ' + m.roomId;
@@ -320,6 +323,7 @@
         S.selfIndex = m.playerIndex;
         S.roomId = S.roomId || m.roomId || localStorage.getItem('uno_room_id') || '';
         localStorage.setItem('uno_room_id', S.roomId);
+        localStorage.setItem('uno_self_index', String(m.playerIndex));
         lobbyBox.classList.remove('hidden');
         if (m.reconnected) {
           lobbyText.textContent = '已重连房间 ' + (S.roomId || '');
@@ -461,7 +465,7 @@
     });
 
     // 按钮状态
-    const needUno = (ui.phase === 'playing' && myTurn && myHand.length === 1 && !ui.uno[self]);
+    const needUno = (ui.phase === 'playing' && myHand.length === 1 && !ui.uno[self]);
     $('btn-uno').classList.toggle('hidden', !needUno);
     $('btn-uno').classList.toggle('pulse', needUno);
     if (needUno && !S.unoPrompted) {
@@ -598,7 +602,7 @@
       const qrLib = qrcode(0, 'M');
       qrLib.addData(link);
       qrLib.make();
-      const cv = document.getElementById('share-qr');
+      const cv = document.createElement('canvas');
       const size = qrLib.getModuleCount();
       const scale = Math.max(2, Math.floor(200 / size));
       const px = size * scale;
@@ -612,6 +616,8 @@
           if (qrLib.isDark(r, c)) ctx.fillRect(c * scale, r * scale, scale, scale);
         }
       }
+      const img = document.getElementById('share-qr');
+      if (img) img.src = cv.toDataURL('image/png');
     } catch (e) {
       console.error('二维码生成失败', e);
       try { toast('二维码生成失败：' + (e && e.message || e)); } catch (e2) {}
@@ -676,7 +682,7 @@
       addLog('定庄结果：' + (g.currentTurn === 0 ? '你' : 'AI') + ' 先出牌', 'start');
       hideDealerModal();
       soloRender();
-      if (g.currentTurn === 1) setTimeout(soloAITurn, 800);
+      if (g.currentTurn === 1) setTimeout(soloAITurn, (g.hands[0].length === 1 && !g.uno[0]) ? 3000 : 800);
     } else {
       sendWs({ action: 'startPlay' });
     }
@@ -882,7 +888,11 @@
     g._lastDetail = detail;
     addLog(detail, 'play');
     soloRender();
-    if (g.phase === 'playing' && g.currentTurn === 1) setTimeout(soloAITurn, 850);
+    if (g.phase === 'playing' && g.currentTurn === 1) {
+      // 玩家刚出牌剩 1 张时，给足喊 UNO 的窗口再让 AI 行动
+      const playerOneLeft = (idx === 0 && g.hands[0].length === 1 && !g.uno[0]);
+      setTimeout(soloAITurn, playerOneLeft ? 3000 : 850);
+    }
   }
   /** 单机 +4 质疑结算 */
   function resolveSoloChallenge(decision) {
@@ -913,7 +923,7 @@
     }
     addLog(g._lastDetail, 'sys');
     soloRender();
-    if (g.phase === 'playing' && g.currentTurn === 1) setTimeout(soloAITurn, 850);
+    if (g.phase === 'playing' && g.currentTurn === 1) setTimeout(soloAITurn, (g.hands[0].length === 1 && !g.uno[0]) ? 3000 : 850);
   }
   function soloDraw(idx) {
     const g = S.solo;
