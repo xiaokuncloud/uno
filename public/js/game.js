@@ -30,7 +30,9 @@
     leaveTimer: null,   // 联机：对方离开后的跳首页定时器
     log: [],            // 对局日志（本局发生了什么）
     _lastDetailLogged: '', // 联机：上次已记录的事件，避免重复
-    ui: null           // 当前 UI 快照（联机来自服务器，单机本地生成）
+    ui: null,          // 当前 UI 快照（联机来自服务器，单机本地生成）
+    lastHand: null,    // 最近一次渲染的手牌（供提示高亮）
+    hintOn: false      // 提示模式：可出牌高亮
   };
 
   // ---------- DOM ----------
@@ -80,12 +82,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=16" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=18" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=16" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=18" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -95,7 +97,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=16'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=18'; });
   }
 
   // ---------- 对局日志 ----------
@@ -134,6 +136,27 @@
   const colorModal = $('color-modal');
   const resultModal = $('result-modal');
   let _colorCb = null;
+  // ---------- 提示按钮：高亮可出牌 ----------
+  function toggleHint() {
+    S.hintOn = !S.hintOn;
+    const b = $('btn-hint');
+    if (b) b.classList.toggle('active', S.hintOn);
+    applyHandHint();
+  }
+  function applyHandHint() {
+    const handEl = $('my-hand');
+    const ui = S.ui;
+    if (!handEl || !ui || !S.lastHand) return;
+    const myTurn = ui.currentTurn === S.selfIndex;
+    Array.from(handEl.children).forEach((wrap, i) => {
+      const card = S.lastHand[i];
+      const c = wrap.querySelector('.uno-card');
+      if (!card || !c) return;
+      const can = ui.phase === 'playing' && myTurn && UnoCore.canPlay(card, ui.discardTop, ui.chosenColor);
+      c.classList.toggle('highlight', S.hintOn && can);
+      c.classList.toggle('disabled', S.hintOn && !can);
+    });
+  }
   function showColorPicker(cb) {
     _colorCb = cb;
     colorModal.classList.remove('hidden');
@@ -154,6 +177,13 @@
       wrap.onclick = () => { _colorCb = null; colorModal.classList.add('hidden'); cb(c); };
       box.appendChild(wrap);
     });
+    // 禁止：不出这张牌
+    const no = document.createElement('div');
+    no.className = 'color-item no-color';
+    no.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#e63946" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="5" y1="5" x2="19" y2="19"/></svg>';
+    no.title = '不出这张牌';
+    no.onclick = () => { _colorCb = null; colorModal.classList.add('hidden'); cb(null); };
+    box.appendChild(no);
   }
   function cancelColorPick() {
     colorModal.classList.add('hidden');
@@ -161,6 +191,7 @@
     _colorCb = null;
   }
   window.cancelColorPick = cancelColorPick;
+  window.toggleHint = toggleHint;
   function hideColorPicker() { _colorCb = null; colorModal.classList.add('hidden'); }
   // ---------- +4 质疑弹窗 ----------
   let _challengeCb = null;
@@ -494,10 +525,11 @@
     if (handEl._finger !== handFinger) {
       handEl._finger = handFinger;
       handEl.innerHTML = '';
+      S.lastHand = myHand;
       myHand.forEach((card) => {
         const can = ui.phase === 'playing' && myTurn && UnoCore.canPlay(card, ui.discardTop, ui.chosenColor);
         const div = el('div', { class: 'card-wrap' });
-        div.innerHTML = cardHTML(card, { disabled: !can, highlight: can });
+        div.innerHTML = cardHTML(card, S.hintOn ? { highlight: can, disabled: !can } : {});
         div.querySelector('.uno-card').onclick = (e) => onCardClick(card, e);
         handEl.appendChild(div);
       });
@@ -853,7 +885,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=16" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=18" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1102,7 +1134,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=16');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=18');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {
