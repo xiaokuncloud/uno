@@ -220,7 +220,7 @@ input:focus { border-color: #1d7fd6; }
 /* 3D 出牌/摸牌动画 */
 .myzone .hand { perspective: 700px; }
 .hand .uno-card { transition: transform .18s ease, box-shadow .18s ease, margin-right .18s ease; }
-.hand .uno-card:not(.disabled):hover { transform: translateY(-14px) rotateX(6deg) scale(1.06); }
+.hand .uno-card:not(.disabled):active { transform: translateY(-6px) scale(1.03); }
 .hand .uno-card.highlight {
   transform: translateY(-16px) rotateX(6deg) scale(1.07);
   box-shadow: 0 0 0 3px #f4b400, 0 12px 26px rgba(0,0,0,.32);
