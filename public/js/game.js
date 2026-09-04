@@ -133,7 +133,9 @@
   // ---------- 弹窗 ----------
   const colorModal = $('color-modal');
   const resultModal = $('result-modal');
+  let _colorCb = null;
   function showColorPicker(cb) {
+    _colorCb = cb;
     colorModal.classList.remove('hidden');
     const box = $('color-pick');
     box.innerHTML = '';
@@ -149,11 +151,16 @@
       label.textContent = UnoCore.COLOR_NAMES[c];
       wrap.appendChild(dot);
       wrap.appendChild(label);
-      wrap.onclick = () => { colorModal.classList.add('hidden'); cb(c); };
+      wrap.onclick = () => { _colorCb = null; colorModal.classList.add('hidden'); cb(c); };
       box.appendChild(wrap);
     });
   }
-  function hideColorPicker() { colorModal.classList.add('hidden'); }
+  function cancelColorPick() {
+    colorModal.classList.add('hidden');
+    if (_colorCb) _colorCb(null);
+    _colorCb = null;
+  }
+  function hideColorPicker() { _colorCb = null; colorModal.classList.add('hidden'); }
   // ---------- +4 质疑弹窗 ----------
   let _challengeCb = null;
   function showChallengeModal(text, hint, cb) {
@@ -547,6 +554,7 @@
     if (card.color === 'wild') {
       showColorPicker((color) => {
         hideColorPicker();
+        if (!color) return; // 取消出牌
         if (el) animatePlay(el, () => doPlay(card, color));
         else doPlay(card, color);
       });
