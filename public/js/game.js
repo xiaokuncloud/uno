@@ -32,7 +32,8 @@
     _lastDetailLogged: '', // 联机：上次已记录的事件，避免重复
     ui: null,          // 当前 UI 快照（联机来自服务器，单机本地生成）
     lastHand: null,    // 最近一次渲染的手牌（供提示高亮）
-    hintOn: false      // 提示模式：可出牌高亮
+    hintOn: false,     // 提示模式：可出牌高亮
+    hintMode: localStorage.getItem('uno_hint_mode') || 'manual'  // 自动/手动
   };
 
   // ---------- DOM ----------
@@ -82,12 +83,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=24" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=25" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=24" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=25" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -97,7 +98,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=24'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=25'; });
   }
 
   // ---------- 对局日志 ----------
@@ -157,12 +158,26 @@
     S.hintOn = !S.hintOn;
     const b = $('btn-hint');
     if (b) b.classList.toggle('active', S.hintOn);
-    // 无牌可出时给文字提示+语音
     if (S.hintOn && S.ui && S.ui.phase === 'playing' && S.lastHand && S.lastHand.length > 0) {
       const has = S.lastHand.some((c) => UnoCore.canPlay(c, S.ui.discardTop, S.ui.chosenColor));
       if (!has) { toast('无牌可出，请抽牌'); speak('无牌可出，请抽牌'); }
     }
     applyHandHint();
+  }
+  function toggleHintMode() {
+    S.hintMode = (S.hintMode === 'auto') ? 'manual' : 'auto';
+    localStorage.setItem('uno_hint_mode', S.hintMode);
+    S.hintOn = false;
+    syncHintBtn();
+    updateHintModeUI();
+    if (S.ui) drawUI(S.ui);
+    toast(S.hintMode === 'auto' ? '已切换为自动提示模式' : '已切换为手动提示模式');
+  }
+  function updateHintModeUI() {
+    const b = $('btn-hint-mode');
+    if (b) b.textContent = S.hintMode === 'auto' ? '自动' : '手动';
+    const hb = $('btn-hint');
+    if (hb) hb.classList.toggle('hidden', S.hintMode === 'auto');
   }
   function applyHandHint() {
     const handEl = $('my-hand');
@@ -233,6 +248,8 @@
   }
   window.cancelColorPick = cancelColorPick;
   window.toggleHint = toggleHint;
+  window.toggleHintMode = toggleHintMode;
+  updateHintModeUI();
   // 防误触返回：对局中拦截浏览器后退/滑动返回，避免误退丢失进度
   history.pushState({ uno: 1 }, '', location.href);
   window.addEventListener('popstate', () => {
@@ -550,7 +567,7 @@
     const n = ui.handCounts[opp] || 0;
     for (let i = 0; i < Math.min(n, 24); i++) {
       const mc = el('div', { class: 'mini-card' });
-      mc.innerHTML = '<img src="/assets/cards/back.webp?v=24" alt="">';
+      mc.innerHTML = '<img src="/assets/cards/back.webp?v=25" alt="">';
       oppCards.appendChild(mc);
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
@@ -617,7 +634,11 @@
     $('btn-draw').classList.toggle('hidden', !(ui.phase === 'playing' && myTurn && !ui.pendingTurnEnd));
     $('btn-rematch').classList.toggle('hidden', !(ui.phase === 'ended' && S.mode === 'solo'));
 
-    // 提示高亮：每次重绘后统一由 applyHandHint 控制（初始永远无高亮）
+    // 自动提示模式：轮到我出牌时自动高亮
+    if (S.hintMode === 'auto') {
+      if (ui.phase === 'playing' && myTurn) { S.hintOn = true; syncHintBtn(); }
+      else { S.hintOn = false; syncHintBtn(); }
+    }
     applyHandHint();
 
     // 结算弹窗（联机：房主可选再来一局/离开，玩家2等待房主）
@@ -967,7 +988,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=24" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=25" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1220,7 +1241,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=24');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=25');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {
