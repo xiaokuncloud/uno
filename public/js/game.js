@@ -160,6 +160,7 @@
     if (_colorCb) _colorCb(null);
     _colorCb = null;
   }
+  window.cancelColorPick = cancelColorPick;
   function hideColorPicker() { _colorCb = null; colorModal.classList.add('hidden'); }
   // ---------- +4 质疑弹窗 ----------
   let _challengeCb = null;
@@ -496,7 +497,7 @@
       myHand.forEach((card) => {
         const can = ui.phase === 'playing' && myTurn && UnoCore.canPlay(card, ui.discardTop, ui.chosenColor);
         const div = el('div', { class: 'card-wrap' });
-        div.innerHTML = cardHTML(card, { disabled: !can });
+        div.innerHTML = cardHTML(card, { disabled: !can, highlight: can });
         div.querySelector('.uno-card').onclick = (e) => onCardClick(card, e);
         handEl.appendChild(div);
       });
