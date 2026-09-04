@@ -426,3 +426,22 @@ input:focus { border-color: #1d7fd6; }
 .bgm-toggle.off .icon-off { display: inline; }
 .bgm-toggle.off { color: #b9bfcc; }
 @media (max-width: 480px) { .bgm-toggle { top: 10px; right: 10px; width: 38px; height: 38px; } }
+
+/* ===== 分享弹窗美化 ===== */
+.share-modal { text-align:center; padding:22px 20px 18px; }
+.share-title { font-size:18px; font-weight:700; color:#1f2937; margin:0 0 4px; }
+.share-sub { font-size:12px; color:#8a8f9c; margin:0 0 14px; }
+.share-qr-box {
+  width:210px; height:210px; margin:0 auto 14px;
+  border-radius:14px; background:#fff; padding:8px;
+  box-shadow:0 2px 10px rgba(31,41,55,.08), inset 0 0 0 1px #eef0f4;
+}
+.share-qr-box canvas { width:100%; height:100%; display:block; border-radius:8px; }
+.share-link-row { display:flex; gap:8px; align-items:stretch; margin-bottom:12px; }
+.share-link-row input {
+  flex:1; min-width:0; padding:0 10px; font-size:12px; color:#374151;
+  border:1px solid #e2e6ee; border-radius:10px; background:#f7f8fb; outline:none;
+}
+.share-link-row .btn { flex:0 0 auto; margin:0; }
+.share-actions { display:flex; justify-content:center; }
+.share-actions .btn { margin:0; }

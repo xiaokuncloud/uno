@@ -589,13 +589,33 @@
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(el);
   }
-  /** 分享：弹出二维码 + 链接（对方扫码/点开自动加入本房间） */
+  /** 分享：本地生成二维码 + 链接（对方扫码/点开自动加入本房间） */
   function shareRoom() {
     const link = location.origin + '/game.html?mode=join&room=' + S.roomId;
-    const qr = $('share-qr');
-    if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + encodeURIComponent(link);
     const inp = $('share-link-input');
     if (inp) inp.value = link;
+    try {
+      const qrLib = qrcode(0, 'M');
+      qrLib.addData(link);
+      qrLib.make();
+      const cv = document.getElementById('share-qr');
+      const size = qrLib.getModuleCount();
+      const scale = Math.max(2, Math.floor(200 / size));
+      const px = size * scale;
+      cv.width = cv.height = px;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, px, px);
+      ctx.fillStyle = '#1f2937';
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (qrLib.isDark(r, c)) ctx.fillRect(c * scale, r * scale, scale, scale);
+        }
+      }
+    } catch (e) {
+      console.error('二维码生成失败', e);
+      try { toast('二维码生成失败：' + (e && e.message || e)); } catch (e2) {}
+    }
     const modal = $('share-modal');
     if (modal) modal.classList.remove('hidden');
   }

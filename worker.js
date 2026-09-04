@@ -182,10 +182,10 @@ export class UnoRoom {
 
   /* ---- 持久化：storage 保存纯数据，恢复时 ws 重新绑定 ---- */
   async load() {
+    // 内存态已有效（实例活跃，players 含活跃 ws 引用）→ 不覆盖
+    if (this.players.length > 0) return;
     const saved = await this.state.storage.get('room');
     if (!saved) return;
-    // 若已有活跃 WebSocket 连接（实例没冻结），内存态仍有效，不覆盖
-    if (this.state.getWebSockets().length > 0) return;
     this.players = (saved.playersMeta || []).map((p) => ({ ...p, ws: null }));
     this.game = saved.game || null;
     this.pendingTurnEnd = saved.pendingTurnEnd != null ? saved.pendingTurnEnd : null;
@@ -242,7 +242,11 @@ export class UnoRoom {
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
     if (!msg || !msg.action) return;
-    await this.handleAction(ws, msg);
+    try {
+      await this.handleAction(ws, msg);
+    } catch (e) {
+      this.send(ws, { action: 'error', msg: '服务器处理异常' });
+    }
     await this.save();
   }
 
@@ -391,7 +395,7 @@ export class UnoRoom {
     switch (msg.action) {
       // 房间内第一个 joinRoom = 房主；第二个 = 玩家2；同昵称离线槽位 = 断线重连
       case 'joinRoom': {
-        await this.state.storage.deleteAlarm(); // 有人进房，取消销毁
+        try { await this.state.storage.deleteAlarm(); } catch (e) {} // 有人进房，取消销毁
         const roomId = String(msg.roomId || '');
         const joinName = String(msg.name || '').slice(0, 12);
         const slot = this.players.findIndex((p) => p.offline && p.name === joinName);
