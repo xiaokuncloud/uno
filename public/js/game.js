@@ -59,10 +59,10 @@
   // 真实 UNO 素材图（CC0 公有领域，来源：Wikimedia Commons "UNO cards deck.svg"）
   const CARD_IMG_KEY = { '+2': '2p', 'reverse': 'rev', 'skip': 'skip', 'wild': 'wild', '+4': 'p4' };
   function cardImg(card) {
-    if (card.value === '+4') return 'p4.png';
-    if (card.color === 'wild') return 'wild.png';
+    if (card.value === '+4') return 'p4.webp';
+    if (card.color === 'wild') return 'wild.webp';
     const v = CARD_IMG_KEY[card.value] || card.value;
-    return `${card.color}_${v}.png`;
+    return `${card.color}_${v}.webp`;
   }
   const COLOR_HEX = { red: '#e63946', blue: '#1d7fd6', green: '#2a9d4f', yellow: '#e6a700' };
   function esc(s) {
@@ -80,22 +80,22 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.png?v=15" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=16" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=14" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=16" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
   function preloadCards() {
-    const files = ['back.png', 'wild.png', 'p4.png'];
+    const files = ['back.webp', 'wild.webp', 'p4.webp'];
     ['red', 'blue', 'green', 'yellow'].forEach((c) => {
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
-      files.push(c + '_2p.png', c + '_rev.png', c + '_skip.png');
+      files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=14'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=16'; });
   }
 
   // ---------- 对局日志 ----------
@@ -444,26 +444,30 @@
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
 
-    // 台面：顶牌 + 历史散落牌（随机铺在桌面，模拟真实场景）
+    // 台面：顶牌 + 历史散落牌（随机铺在桌面）。增量渲染：牌面没变就不重建，防止每次 state 全量重画闪烁
     const stackEl = $('table-stack');
     const recent = (ui.recentDiscard && ui.recentDiscard.length) ? ui.recentDiscard : (ui.discardTop ? [ui.discardTop] : []);
-    stackEl.innerHTML = '';
-    if (recent.length) {
-      const under = recent.slice(0, -1).slice(-4); // 顶牌之下最近 4 张
-      under.forEach((c, i) => {
-        const d = el('div', { class: 'scatter-card uno-card' });
-        d.innerHTML = cardHTML(c);
-        const rot = -24 + ((i * 13) % 48); // 随机角度
-        const dx = (i % 2 ? 1 : -1) * (14 + (i % 3) * 16); // 左右错落
-        const dy = ((i * 7) % 18) - 5;                     // 上下错落
-        d.style.transform = 'rotate(' + rot + 'deg) translate(' + dx + 'px,' + dy + 'px)';
-        d.style.zIndex = i;
-        stackEl.appendChild(d);
-      });
-      const topCard = recent[recent.length - 1];
-      const tc = el('div', { class: 'big-card uno-card', id: 'table-card' });
-      tc.innerHTML = cardHTML(topCard);
-      stackEl.appendChild(tc);
+    const stackFinger = JSON.stringify(recent);
+    if (stackEl._finger !== stackFinger) {
+      stackEl._finger = stackFinger;
+      stackEl.innerHTML = '';
+      if (recent.length) {
+        const under = recent.slice(0, -1).slice(-4); // 顶牌之下最近 4 张
+        under.forEach((c, i) => {
+          const d = el('div', { class: 'scatter-card uno-card' });
+          d.innerHTML = cardHTML(c);
+          const rot = -24 + ((i * 13) % 48); // 随机角度
+          const dx = (i % 2 ? 1 : -1) * (14 + (i % 3) * 16); // 左右错落
+          const dy = ((i * 7) % 18) - 5;                     // 上下错落
+          d.style.transform = 'rotate(' + rot + 'deg) translate(' + dx + 'px,' + dy + 'px)';
+          d.style.zIndex = i;
+          stackEl.appendChild(d);
+        });
+        const topCard = recent[recent.length - 1];
+        const tc = el('div', { class: 'big-card uno-card', id: 'table-card' });
+        tc.innerHTML = cardHTML(topCard);
+        stackEl.appendChild(tc);
+      }
     }
 
     // 台面信息
@@ -471,17 +475,21 @@
     $('event-info').innerHTML = colorInfoHTML(ui.lastDetail, colorName, ui.chosenColor);
     $('deck-count').textContent = ui.drawPileCount != null ? '(' + ui.drawPileCount + ')' : '';
 
-    // 手牌
+    // 手牌：增量渲染（牌面没变不重建，减少闪烁）
     const handEl = $('my-hand');
-    handEl.innerHTML = '';
     const myHand = ui.selfHand || [];
-    myHand.forEach((card) => {
-      const can = ui.phase === 'playing' && myTurn && UnoCore.canPlay(card, ui.discardTop, ui.chosenColor);
-      const div = el('div', { class: 'card-wrap' });
-      div.innerHTML = cardHTML(card, { disabled: !can });
-      div.querySelector('.uno-card').onclick = (e) => onCardClick(card, e);
-      handEl.appendChild(div);
-    });
+    const handFinger = JSON.stringify(myHand);
+    if (handEl._finger !== handFinger) {
+      handEl._finger = handFinger;
+      handEl.innerHTML = '';
+      myHand.forEach((card) => {
+        const can = ui.phase === 'playing' && myTurn && UnoCore.canPlay(card, ui.discardTop, ui.chosenColor);
+        const div = el('div', { class: 'card-wrap' });
+        div.innerHTML = cardHTML(card, { disabled: !can });
+        div.querySelector('.uno-card').onclick = (e) => onCardClick(card, e);
+        handEl.appendChild(div);
+      });
+    }
 
     // 按钮状态
     const needUno = (ui.phase === 'playing' && myHand.length === 1 && !ui.uno[self]);
@@ -543,8 +551,13 @@
     }
   }
   function doDraw() {
-    if (S.mode === 'solo') animateDraw(() => soloDraw(0));
-    else animateDraw(() => sendWs({ action: 'drawCard' }));
+    if (S.mode === 'solo') {
+      animateDraw(() => soloDraw(0));
+    } else {
+      // 先发请求再播动画（动画与网络并行，减少等待感）
+      sendWs({ action: 'drawCard' });
+      animateDraw(() => {});
+    }
   }
   function doEndTurn() {
     if (S.mode === 'solo') {
@@ -816,7 +829,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.png?v=15" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=16" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {

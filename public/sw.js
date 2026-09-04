@@ -13,7 +13,7 @@ const CORE = [
   '/js/uno-core.js?v=16',
   '/js/qrcode.min.js?v=16',
   '/js/game.js?v=16',
-  '/assets/logo3d.png?v=16'
+  '/assets/logo3d.webp?v=16'
 ];
 
 self.addEventListener('install', (e) => {

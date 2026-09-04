@@ -270,7 +270,8 @@ export class UnoRoom {
     } catch (e) {
       this.send(ws, { action: 'error', msg: '服务器处理异常' });
     }
-    await this.save();
+    // 持久化不阻塞响应：玩家已收到 state，storage 写入异步完成即可
+    try { this.save().catch(() => {}); } catch (e) {}
   }
 
   async webSocketClose(ws, code, reason, wasClean) {
