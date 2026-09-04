@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>双人 UNO · 情侣小游戏</title>
-  <link rel="stylesheet" href="/css/style.css?v=22">
+  <link rel="stylesheet" href="/css/style.css?v=23">
 </head>
 <body>
   <audio id="bgm" loop preload="none"></audio>
@@ -15,7 +15,7 @@
   <div class="home">
     <!-- 精致 SVG Logo：四色渐变 UNO 卡片 + 红心 -->
     <div class="logo">
-      <img src="/assets/logo3d.webp?v=22" alt="双人UNO">
+      <img src="/assets/logo3d.webp?v=23" alt="双人UNO">
     </div>
     <h1>双人 UNO</h1>
     <p class="sub">情侣 / 好友专属 · 单机练手 & 双人联机</p>
@@ -98,7 +98,7 @@
       var KEY = 'uno_bgm_off';
       var on = localStorage.getItem(KEY) !== '1'; // 默认开，手动关过后记住
       function playTry() {
-        if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=22');
+        if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=23');
         var p = bgm.play(); if (p && p.catch) p.catch(function(){});
       }
       function apply() {

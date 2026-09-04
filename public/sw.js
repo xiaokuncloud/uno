@@ -4,16 +4,16 @@
  *  - HTML（首页/游戏页）：网络优先，失败回退缓存（保证拿最新页面壳）
  *  - 静态资源（css/js/img/mp3/卡牌）：缓存优先，后台更新（第二次打开秒开）
  */
-const CACHE = 'uno-v22';
+const CACHE = 'uno-v23';
 const CORE = [
   '/',
   '/index.html',
   '/game.html',
-  '/css/style.css?v=22',
-  '/js/uno-core.js?v=22',
-  '/js/qrcode.min.js?v=22',
-  '/js/game.js?v=22',
-  '/assets/logo3d.webp?v=22'
+  '/css/style.css?v=23',
+  '/js/uno-core.js?v=23',
+  '/js/qrcode.min.js?v=23',
+  '/js/game.js?v=23',
+  '/assets/logo3d.webp?v=23'
 ];
 
 self.addEventListener('install', (e) => {
