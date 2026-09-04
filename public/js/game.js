@@ -82,12 +82,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=19" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=20" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=19" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=20" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -97,7 +97,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=19'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=20'; });
   }
 
   // ---------- 对局日志 ----------
@@ -136,6 +136,22 @@
   const colorModal = $('color-modal');
   const resultModal = $('result-modal');
   let _colorCb = null;
+  // ---------- 语音提示（TTS） ----------
+  let _lastSpeakText = '';
+  let _lastSpeakTime = 0;
+  function speak(text) {
+    if (localStorage.getItem('uno_bgm_off') === '1') return;
+    const now = Date.now();
+    if (text === _lastSpeakText && now - _lastSpeakTime < 3000) return;
+    _lastSpeakText = text;
+    _lastSpeakTime = now;
+    try {
+      const a = new Audio('https://api.qb.foan.cc/api/tts?text=' + encodeURIComponent(text));
+      a.volume = 0.85;
+      a.play().catch(function () {});
+    } catch (e) {}
+  }
+
   // ---------- 提示按钮：高亮可出牌 ----------
   function toggleHint() {
     S.hintOn = !S.hintOn;
@@ -189,10 +205,17 @@
       wrap.onclick = () => { _colorCb = null; colorModal.classList.add('hidden'); cb(c); };
       box.appendChild(wrap);
     });
-    // 禁止：不出这张牌
+    // 禁止：不出这张牌（和颜色项同结构：圆点+文字，对齐）
     const no = document.createElement('div');
     no.className = 'color-item no-color';
-    no.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#e63946" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="5" y1="5" x2="19" y2="19"/></svg>';
+    const noDot = document.createElement('div');
+    noDot.className = 'dot';
+    noDot.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#e63946" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="5" y1="5" x2="19" y2="19"/></svg>';
+    const noLabel = document.createElement('span');
+    noLabel.className = 'color-label';
+    noLabel.textContent = '不出';
+    no.appendChild(noDot);
+    no.appendChild(noLabel);
     no.title = '不出这张牌';
     no.onclick = () => { _colorCb = null; colorModal.classList.add('hidden'); cb(null); };
     box.appendChild(no);
@@ -418,6 +441,7 @@
         lobbyText.textContent = (m.playerNames && m.playerNames[1]) + ' 已加入！';
         lobbyTip.textContent = '双方就绪，点击开始';
         btnStart.classList.remove('hidden');
+        speak((m.playerNames && m.playerNames[1]) + '加入了房间');
         break;
       case 'error':
         if (S.reconnecting) {
@@ -434,6 +458,7 @@
         toast(m.msg);
         break;
       case 'state':
+        if (!S._gameActive) { S._gameActive = true; S.hintOn = false; syncHintBtn(); }
         S.ui = m.game;
         lobbyBox.classList.add('hidden');
         gameBox.classList.remove('hidden');
@@ -445,7 +470,7 @@
           addLog(m.game.lastDetail, 'sys');
         }
         // 定庄阶段：显示抽牌定庄弹窗
-        if (S.ui.phase === 'drawing') showDealerModal(S.ui);
+        if (S.ui.phase === 'drawing') { showDealerModal(S.ui); S._winSpoken = false; }
         else hideDealerModal();
         break;
       case 'chat':
@@ -463,13 +488,16 @@
         syncHintBtn();
         hideResult();
         toast(m.byName + ' 发起再来一局，即将开始！');
+        speak('再来一局');
         break;
       case 'peerLeft':
         appendChat('系统', m.name + ' 暂时离线，60 秒内可自动重连', 'sys');
         toast(m.name + ' 暂时离线，对方可在 60 秒内重连');
+        speak(m.name + '离开了');
         break;
       case 'roomDestroyed':
         toast('房间已销毁，即将返回首页');
+        speak('房间已解散');
         localStorage.removeItem('uno_room_id');
         if (S.leaveTimer) clearTimeout(S.leaveTimer);
         setTimeout(() => { location.href = '/'; }, 800);
@@ -515,7 +543,9 @@
     oppCards.innerHTML = '';
     const n = ui.handCounts[opp] || 0;
     for (let i = 0; i < Math.min(n, 24); i++) {
-      oppCards.appendChild(el('div', { class: 'mini-card' }));
+      const mc = el('div', { class: 'mini-card' });
+      mc.innerHTML = '<img src="/assets/cards/back.webp?v=20" alt="">';
+      oppCards.appendChild(mc);
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
 
@@ -561,7 +591,7 @@
       myHand.forEach((card) => {
         const can = ui.phase === 'playing' && myTurn && UnoCore.canPlay(card, ui.discardTop, ui.chosenColor);
         const div = el('div', { class: 'card-wrap' });
-        div.innerHTML = cardHTML(card, S.hintOn ? { highlight: can, disabled: !can } : {});
+        div.innerHTML = cardHTML(card, {});
         div.querySelector('.uno-card').onclick = (e) => onCardClick(card, e);
         handEl.appendChild(div);
       });
@@ -581,6 +611,8 @@
     $('btn-draw').classList.toggle('hidden', !(ui.phase === 'playing' && myTurn && !ui.pendingTurnEnd));
     $('btn-rematch').classList.toggle('hidden', !(ui.phase === 'ended' && S.mode === 'solo'));
 
+    // 提示高亮：每次重绘后统一由 applyHandHint 控制（初始永远无高亮）
+    applyHandHint();
 
     // 结算弹窗（联机：房主可选再来一局/离开，玩家2等待房主）
     if (ui.phase === 'ended' && S.mode !== 'solo') {
@@ -588,6 +620,7 @@
       $('btn-result-rematch').classList.toggle('hidden', !isHost);
       $('btn-result-home').classList.toggle('hidden', !isHost);
       $('btn-result-home').textContent = '离开房间';
+      if (!S._winSpoken) { S._winSpoken = true; speak(ui.winner === self ? '你赢了' : '对方获胜'); }
       showResult(
         ui.winner === self ? '你赢啦！' : '对方获胜',
         isHost ? '本局已结束，是否再来一局？' : '等待房主选择再来一局或离开…'
@@ -656,6 +689,7 @@
     }
   }
   function doCallUno() {
+    speak('优诺');
     if (S.mode === 'solo') {
       if (S.solo.hands[0].length === 1) {
         S.solo.uno[0] = true;
@@ -687,6 +721,9 @@
     }
   }
   function goHome() {
+    S._gameActive = false;
+    S.hintOn = false;
+    S._winSpoken = false;
     clearSoloState();
     if (S.mode !== 'solo' && S.roomId) {
       localStorage.removeItem('uno_room_id');
@@ -921,7 +958,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=19" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=20" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -968,6 +1005,7 @@
       g._lastDetail = (idx === 0 ? '你' : 'AI') + ' 手牌清空，获胜！比分 ' + g.scores[0] + ':' + g.scores[1];
       addLog((idx === 0 ? '你' : 'AI') + ' 手牌清空，本局获胜！比分 ' + g.scores[0] + ':' + g.scores[1], 'win');
       soloRender();
+      speak(idx === 0 ? '你赢了' : 'AI获胜');
       if (idx === 0) showResult('你赢啦！', '手牌清空，AI 甘拜下风！当前比分 ' + g.scores[0] + ':' + g.scores[1]);
       else showResult('AI 获胜', '再接再厉！当前比分 ' + g.scores[0] + ':' + g.scores[1]);
       return;
@@ -1173,7 +1211,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=19');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=20');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {
