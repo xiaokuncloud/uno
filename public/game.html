@@ -175,6 +175,21 @@
       <button class="btn btn-online btn-sm" onclick="closeLog()">关闭</button>
     </div>
   </div>
+  <!-- 分享弹窗（带二维码） -->
+  <div class="modal-mask hidden" id="share-modal">
+    <div class="modal" style="text-align:center">
+      <h2>分享给好友</h2>
+      <img id="share-qr" width="210" height="210" alt="分享二维码" style="margin:6px auto 10px;border-radius:10px;background:#fff;padding:8px">
+      <p class="tip">手机扫码，或复制链接发给对方点开即可加入</p>
+      <div class="row" style="margin-top:6px">
+        <input id="share-link-input" type="text" readonly style="flex:1;min-width:0;font-size:12px">
+        <button class="btn btn-sm btn-online" style="flex:0 0 auto;margin:0" onclick="copyShareLink()">复制链接</button>
+      </div>
+      <div class="row" style="margin-top:8px;justify-content:center">
+        <button class="btn btn-ghost btn-sm" onclick="closeShare()">关闭</button>
+      </div>
+    </div>
+  </div>
   <!-- Toast 轻提示 -->
   <div id="toast" class="toast hidden"></div>
   <script src="/js/uno-core.js?v=13"></script>

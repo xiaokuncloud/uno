@@ -1,14 +1,14 @@
 /**
- * worker.js — 双人 UNO Cloudflare Worker + Durable Objects 版
+ * worker.js — 双人 UNO Cloudflare Worker + Durable Objects 版（v2：DO 状态持久化）
+ *
  * 部署：wrangler deploy（配合 wrangler.toml + public/ 静态资产 + DO 绑定）
- * 或 Cloudflare Dashboard 手动配置。
+ *
+ * v2 修复：Durable Object 空闲会被冻结、内存态会丢（房间消失→好友加入变新房主）。
+ * 现在房间状态用 state.storage 持久化 + setAlarm 控制销毁，断线重连/好友加入跨冻结期也可靠。
  *
  * 架构：
  *   - 静态前端（public/）→ Workers Static Assets 自动托管
  *   - /ws?room=xxxx 的 WebSocket 请求 → 路由到 Durable Object（每房间一个实例）
- *   - Durable Object 内存态：房间/对局/断线重连（同 server.js 逻辑）
- *
- * 前端（game.js）改动：连接地址加 /ws?room=，create 模式前端自生成 6 位房号。
  */
 
 /* =====================================================================
@@ -166,23 +166,68 @@ function createGame(players) {
 }
 
 /* =====================================================================
- *  Durable Object：一个房间 = 一个实例
+ *  Durable Object：一个房间 = 一个实例（状态持久化到 storage）
  * ===================================================================== */
 export class UnoRoom {
   constructor(state, env) {
     this.state = state;
-    this.players = [];            // {ws, name, index, offline}
+    this.players = [];            // 内存态：{ws, name, index, offline}
     this.game = null;
     this.pendingTurnEnd = null;
     this.lastEvent = null;
     this.lastDetail = null;
     this.lastPlay = null;
+    this.pendingChallenge = null; // 内存态：{target, challenger, hasPlayable, timer}
+  }
+
+  /* ---- 持久化：storage 保存纯数据，恢复时 ws 重新绑定 ---- */
+  async load() {
+    const saved = await this.state.storage.get('room');
+    if (!saved) return;
+    // 若已有活跃 WebSocket 连接（实例没冻结），内存态仍有效，不覆盖
+    if (this.state.getWebSockets().length > 0) return;
+    this.players = (saved.playersMeta || []).map((p) => ({ ...p, ws: null }));
+    this.game = saved.game || null;
+    this.pendingTurnEnd = saved.pendingTurnEnd != null ? saved.pendingTurnEnd : null;
+    this.lastEvent = saved.lastEvent || null;
+    this.lastDetail = saved.lastDetail || null;
+    this.lastPlay = saved.lastPlay || null;
+    if (saved.pendingChallenge) {
+      this.pendingChallenge = { ...saved.pendingChallenge, timer: null };
+    }
+  }
+  async save() {
+    const playersMeta = this.players.map((p) => ({ name: p.name, index: p.index, offline: !!p.offline }));
+    await this.state.storage.put('room', {
+      playersMeta,
+      game: this.game,
+      pendingTurnEnd: this.pendingTurnEnd,
+      lastEvent: this.lastEvent,
+      lastDetail: this.lastDetail,
+      lastPlay: this.lastPlay,
+      pendingChallenge: this.pendingChallenge ? { target: this.pendingChallenge.target, challenger: this.pendingChallenge.challenger, hasPlayable: this.pendingChallenge.hasPlayable } : null
+    });
+  }
+  /* 没有任何在线的玩家时，60 秒后销毁房间（alarm 持久化，冻结也会触发） */
+  async scheduleDestroy() {
+    await this.state.storage.setAlarm(Date.now() + 60000);
+  }
+  async alarm() {
+    // 还有在线玩家则不销毁
+    const online = this.players.filter((p) => !p.offline && p.ws);
+    if (online.length > 0) {
+      await this.state.storage.deleteAlarm();
+      return;
+    }
+    await this.state.storage.delete('room');
+    this.players = [];
+    this.game = null;
     this.pendingChallenge = null;
-    this._destroyTimer = null;
   }
 
   /* ---- WebSocket 接入 ---- */
   async fetch(request) {
+    await this.load();
     if (request.headers.get('Upgrade') === 'websocket') {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
@@ -196,11 +241,14 @@ export class UnoRoom {
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
     if (!msg || !msg.action) return;
-    this.handleAction(ws, msg);
+    await this.handleAction(ws, msg);
+    await this.save();
   }
 
   async webSocketClose(ws, code, reason, wasClean) {
     this.onClose(ws);
+    await this.save();
+    await this.scheduleDestroy();
   }
 
   /* ---- 工具 ---- */
@@ -287,12 +335,11 @@ export class UnoRoom {
         ? (g.prevChosen != null ? g.prevChosen : 'red')
         : (beforeTop ? beforeTop.color : null);
       const hasPlayable = g.hands[playerIndex].some((c) => canPlay(c, beforeTop, effColor));
-      this.pendingChallenge = {
-        target: playerIndex,
-        challenger: opp,
-        hasPlayable,
-        timer: setTimeout(() => this.resolveChallenge(false), 20000)
-      };
+      const pc = { target: playerIndex, challenger: opp, hasPlayable, timer: null };
+      if (this.state.getWebSockets().length > 0) {
+        pc.timer = setTimeout(() => { this.resolveChallenge(false); }, 20000);
+      }
+      this.pendingChallenge = pc;
       this.lastEvent = 'challenge';
       this.lastDetail = `${player.name} 打出+4！${this.players[opp].name} 可选择质疑`;
       this.lastPlay = { name: player.name, card: playedCard };
@@ -338,27 +385,25 @@ export class UnoRoom {
   }
 
   /* ---- 消息分发 ---- */
-  handleAction(ws, msg) {
+  async handleAction(ws, msg) {
     const selfIndex = this.indexOf(ws);
     switch (msg.action) {
-      // 创建房间 = 房间内第一个 joinRoom（前端生成 6 位房号路由到本 DO）
-      // 加入房间 = 第二个 joinRoom；同昵称 = 断线重连
+      // 房间内第一个 joinRoom = 房主；第二个 = 玩家2；同昵称离线槽位 = 断线重连
       case 'joinRoom': {
+        await this.state.storage.deleteAlarm(); // 有人进房，取消销毁
         const roomId = String(msg.roomId || '');
         const joinName = String(msg.name || '').slice(0, 12);
-        // 断线重连：存在离线槽位且昵称匹配
         const slot = this.players.findIndex((p) => p.offline && p.name === joinName);
         if (slot >= 0) {
           this.players[slot].ws = ws;
           this.players[slot].offline = false;
-          if (this._destroyTimer) { clearTimeout(this._destroyTimer); this._destroyTimer = null; }
+          if (this.pendingChallenge) {
+            const pc = this.pendingChallenge;
+            const op = this.players[pc.opp];
+            if (op && op.ws && !op.offline) this.send(op.ws, { action: 'offerChallenge', byName: this.players[pc.target].name });
+          }
           if (this.game) {
             this.pushState('rejoin', `${this.players[slot].name} 重新连接`);
-            if (this.pendingChallenge) {
-              const pc = this.pendingChallenge;
-              const op = this.players[pc.opp];
-              if (op && op.ws && !op.offline) this.send(op.ws, { action: 'offerChallenge', byName: this.players[pc.target].name });
-            }
           } else {
             this.send(ws, { action: 'joined', playerIndex: slot, playerNames: this.players.map((p) => p.name), reconnected: true });
             const other = this.players.find((p) => !p.offline && p.ws !== ws);
@@ -375,7 +420,7 @@ export class UnoRoom {
           this.players.push({ ws, name: joinName || '玩家2', index: 1, offline: false });
           this.send(ws, { action: 'joined', playerIndex: 1, playerNames: this.players.map((p) => p.name) });
           const host = this.players[0];
-          if (host && host.ws) this.send(host.ws, { action: 'peerJoined', playerNames: this.players.map((p) => p.name) });
+          if (host && host.ws && !host.offline) this.send(host.ws, { action: 'peerJoined', playerNames: this.players.map((p) => p.name) });
         }
         break;
       }
@@ -386,9 +431,12 @@ export class UnoRoom {
           this.send(other.ws, { action: 'roomDestroyed' });
           try { other.ws.close(); } catch (e) {}
         }
-        if (this._destroyTimer) { clearTimeout(this._destroyTimer); this._destroyTimer = null; }
         if (this.pendingChallenge && this.pendingChallenge.timer) { clearTimeout(this.pendingChallenge.timer); }
+        await this.state.storage.deleteAlarm();
+        await this.state.storage.delete('room');
         this.players = [];
+        this.game = null;
+        this.pendingChallenge = null;
         break;
       }
       // 开始游戏
@@ -518,17 +566,9 @@ export class UnoRoom {
       this.send(this.players[other].ws, { action: 'peerLeft', name: this.players[idx].name, destroyIn: 60, rejoinable: true });
     }
     this.players[idx].offline = true;
-    if (!this._destroyTimer) {
-      // 60 秒重连宽限：同房号+同昵称可重连恢复对局
-      this._destroyTimer = setTimeout(() => {
-        const online = this.players.find((p) => !p.offline && p.ws);
-        if (online) {
-          this.send(online.ws, { action: 'roomDestroyed' });
-          try { online.ws.close(); } catch (e) {}
-        }
-        if (this.pendingChallenge && this.pendingChallenge.timer) { clearTimeout(this.pendingChallenge.timer); }
-        this.players = [];
-      }, 60000);
+    if (this.pendingChallenge && this.pendingChallenge.challenger === idx) {
+      // 质疑方离线：按不质疑处理，避免卡局
+      this.resolveChallenge(false);
     }
   }
 }
@@ -546,7 +586,6 @@ export default {
       const stub = env.UNO_ROOMS.get(id);
       return stub.fetch(request);
     }
-    // 静态文件由 Workers Static Assets 托管
     return env.ASSETS.fetch(request);
   }
 };

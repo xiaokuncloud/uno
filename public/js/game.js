@@ -589,11 +589,23 @@
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(el);
   }
-  /** 复制完整分享链接（对方点开自动加入本房间） */
+  /** 分享：弹出二维码 + 链接（对方扫码/点开自动加入本房间） */
   function shareRoom() {
     const link = location.origin + '/game.html?mode=join&room=' + S.roomId;
-    copyText(link);
-    toast('分享链接已复制，发给好友即可加入');
+    const qr = $('share-qr');
+    if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + encodeURIComponent(link);
+    const inp = $('share-link-input');
+    if (inp) inp.value = link;
+    const modal = $('share-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
+  function copyShareLink() {
+    const inp = $('share-link-input');
+    if (inp) { copyText(inp.value); toast('链接已复制，发给好友即可加入'); }
+  }
+  function closeShare() {
+    const modal = $('share-modal');
+    if (modal) modal.classList.add('hidden');
   }
   /** 复制 6 位房间号 */
   function copyRoom() {
@@ -945,6 +957,8 @@
   window.goHome = goHome;
   window.copyRoom = copyRoom;
   window.shareRoom = shareRoom;
+  window.copyShareLink = copyShareLink;
+  window.closeShare = closeShare;
   window.sendChat = sendChat;
   window.onlineStart = onlineStart;
   window.doStartPlay = doStartPlay;
