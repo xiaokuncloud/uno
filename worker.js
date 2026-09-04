@@ -492,6 +492,7 @@ export class UnoRoom {
           try { other.ws.close(); } catch (e) {}
         }
         if (this.pendingChallenge && this.pendingChallenge.timer) { clearTimeout(this.pendingChallenge.timer); }
+        if (this.pendingRematch) { clearTimeout(this.pendingRematch); this.pendingRematch = null; }
         await this.state.storage.deleteAlarm();
         await this.state.storage.delete('room');
         this.players = [];
@@ -608,10 +609,16 @@ export class UnoRoom {
         this.broadcast({ action: 'chat', name, text: text.trim() });
         break;
       }
-      // 再来一局
+      // 再来一局（仅房主可发起；先广播提示，稍后自动开始新局）
       case 'rematch': {
-        if (this.game && this.game.phase !== 'ended') { this.send(ws, { action: 'error', msg: '本局还未结束' }); return; }
-        this.startGame();
+        if (!this.game || this.game.phase !== 'ended') { this.send(ws, { action: 'error', msg: '本局还未结束' }); return; }
+        if (selfIndex !== 0) { this.send(ws, { action: 'error', msg: '只有房主可以发起再来一局' }); return; }
+        if (this.pendingRematch) return;
+        this.broadcast({ action: 'rematchNotice', byName: this.players[0].name });
+        this.pendingRematch = setTimeout(() => {
+          this.pendingRematch = null;
+          this.startGame();
+        }, 1800);
         break;
       }
     }

@@ -398,6 +398,10 @@
           (decision) => sendWs({ action: 'challenge', decision })
         );
         break;
+      case 'rematchNotice':
+        hideResult();
+        toast(m.byName + ' 发起再来一局，即将开始！');
+        break;
       case 'peerLeft':
         appendChat('系统', m.name + ' 暂时离线，60 秒内可自动重连', 'sys');
         toast(m.name + ' 暂时离线，对方可在 60 秒内重连');
@@ -504,14 +508,22 @@
     $('btn-endturn').classList.toggle('hidden', !ui.pendingTurnEnd);
     $('btn-draw').classList.toggle('hidden', !(ui.phase === 'playing' && myTurn && !ui.pendingTurnEnd));
     $('btn-rematch').classList.toggle('hidden', !(ui.phase === 'ended' && S.mode === 'solo'));
-    $('btn-result-rematch').classList.toggle('hidden', S.mode !== 'solo');
 
-    // 结算弹窗（联机）
+
+    // 结算弹窗（联机：房主可选再来一局/离开，玩家2等待房主）
     if (ui.phase === 'ended' && S.mode !== 'solo') {
+      const isHost = self === 0;
+      $('btn-result-rematch').classList.toggle('hidden', !isHost);
+      $('btn-result-home').classList.toggle('hidden', !isHost);
+      $('btn-result-home').textContent = '离开房间';
       showResult(
         ui.winner === self ? '你赢啦！' : '对方获胜',
-        (ui.winner === self ? '你的手牌先清空了！' : '再接再厉，再来一局？')
+        isHost ? '本局已结束，是否再来一局？' : '等待房主选择再来一局或离开…'
       );
+    } else if (ui.phase === 'ended' && S.mode === 'solo') {
+      $('btn-result-rematch').classList.remove('hidden');
+      $('btn-result-home').classList.remove('hidden');
+      $('btn-result-home').textContent = '返回首页';
     } else if (ui.phase === 'playing') {
       hideResult();
     }
@@ -606,6 +618,9 @@
     if (S.mode !== 'solo' && S.roomId) {
       localStorage.removeItem('uno_room_id');
       sendWs({ action: 'leaveRoom', roomId: S.roomId });
+      // 等 leaveRoom 送达服务器（对方收到“房主离开”提示）再跳转
+      setTimeout(() => { location.href = '/'; }, 250);
+      return;
     }
     location.href = '/';
   }
