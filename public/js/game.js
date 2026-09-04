@@ -80,12 +80,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.png?v=13" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.png?v=14" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=13" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=14" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -95,7 +95,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.png', c + '_rev.png', c + '_skip.png');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=13'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=14'; });
   }
 
   // ---------- 对局日志 ----------
@@ -749,7 +749,7 @@
       const w = 70, h = 107;
       const clone = document.createElement('div');
       clone.className = 'uno-card';
-      clone.innerHTML = `<img src="/assets/cards/${cardImg(act.card)}?v=13" alt="">`;
+      clone.innerHTML = `<img src="/assets/cards/${cardImg(act.card)}?v=14" alt="">`;
       Object.assign(clone.style, {
         position: 'fixed', zIndex: 300, pointerEvents: 'none', margin: '0',
         left: (to.left + to.width / 2 - w / 2) + 'px',
@@ -771,7 +771,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.png?v=13" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.png?v=14" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1008,21 +1008,29 @@
   $('btn-rematch').onclick = doRematch;
 })();
 
-// ===== 背景音乐：首次交互后自动播放，可静音/恢复 =====
+// ===== 背景音乐：状态记忆 + 自动补播（除非手动关闭） =====
 (function () {
   var bgm = document.getElementById('bgm');
   var btn = document.getElementById('bgm-toggle');
   if (!bgm || !btn) return;
-  var on = true;
-  function toggle() {
-    on = !on;
-    if (on) { bgm.play().catch(function(){}); } else { bgm.pause(); }
+  var KEY = 'uno_bgm_off';
+  var on = localStorage.getItem(KEY) !== '1';
+  function playTry() { var p = bgm.play(); if (p && p.catch) p.catch(function(){}); }
+  function apply() {
     btn.classList.toggle('off', !on);
+    if (on) playTry(); else bgm.pause();
   }
-  btn.addEventListener('click', toggle);
-  function first() {
-    bgm.play().catch(function(){});
+  btn.addEventListener('click', function () {
+    on = !on;
+    localStorage.setItem(KEY, on ? '0' : '1');
+    apply();
+  });
+  document.addEventListener('pointerdown', function first() {
+    if (on) playTry();
     document.removeEventListener('pointerdown', first);
-  }
-  document.addEventListener('pointerdown', first);
+  });
+  setInterval(function () {
+    if (on && bgm.paused) playTry();
+  }, 3000);
+  apply();
 })();

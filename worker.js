@@ -208,9 +208,10 @@ export class UnoRoom {
       pendingChallenge: this.pendingChallenge ? { target: this.pendingChallenge.target, challenger: this.pendingChallenge.challenger, hasPlayable: this.pendingChallenge.hasPlayable } : null
     });
   }
-  /* 没有任何在线的玩家时，60 秒后销毁房间（alarm 持久化，冻结也会触发） */
+  /* 没有任何在线的玩家时，6 小时后销毁房间（防房间堆积，短期好友可随时加入）
+     alarm 持久化：实例冻结也会触发；玩家重新进入会 deleteAlarm 取消 */
   async scheduleDestroy() {
-    await this.state.storage.setAlarm(Date.now() + 60000);
+    await this.state.storage.setAlarm(Date.now() + 6 * 3600 * 1000);
   }
   async alarm() {
     // 还有在线玩家则不销毁
@@ -563,7 +564,7 @@ export class UnoRoom {
     if (idx < 0) return;
     const other = 1 - idx;
     if (this.players[other] && this.players[other].ws && !this.players[other].offline) {
-      this.send(this.players[other].ws, { action: 'peerLeft', name: this.players[idx].name, destroyIn: 60, rejoinable: true });
+      this.send(this.players[other].ws, { action: 'peerLeft', name: this.players[idx].name, destroyIn: 360, rejoinable: true });
     }
     this.players[idx].offline = true;
     if (this.pendingChallenge && this.pendingChallenge.challenger === idx) {

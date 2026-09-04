@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/css/style.css?v=13">
 </head>
 <body>
-  <audio id="bgm" src="/assets/bgm.mp3?v=13" loop preload="none"></audio>
+  <audio id="bgm" src="/assets/bgm.mp3?v=14" loop preload="auto"></audio>
   <div class="game">
     <!-- 顶部 -->
     <div class="topbar">
@@ -18,7 +18,8 @@
       <span class="badge" id="mode-badge"></span>
       <span class="topbar-right">
         <button class="icon-btn" id="bgm-toggle" aria-label="背景音乐">
-          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <svg class="icon-on" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <svg class="icon-off" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
         </button>
         <button class="icon-btn" onclick="openHelp()" aria-label="游戏说明">
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4"/><path d="M12 17h.01"/></svg>

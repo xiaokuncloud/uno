@@ -7,9 +7,10 @@
   <link rel="stylesheet" href="/css/style.css?v=13">
 </head>
 <body>
-  <audio id="bgm" src="/assets/bgm.mp3?v=13" loop preload="none"></audio>
+  <audio id="bgm" src="/assets/bgm.mp3?v=14" loop preload="auto"></audio>
   <button id="bgm-toggle" class="bgm-toggle" aria-label="背景音乐">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
   </button>
   <div class="home">
     <!-- 精致 SVG Logo：四色渐变 UNO 卡片 + 红心 -->
@@ -81,22 +82,32 @@
     function toggleJoin() {
       document.getElementById('join-panel').classList.toggle('hidden');
     }
-    // 背景音乐：首次交互后自动播放，可静音/恢复
+    // 背景音乐：状态记忆 + 自动补播（除非手动关闭）
     (function () {
       var bgm = document.getElementById('bgm');
       var btn = document.getElementById('bgm-toggle');
-      var on = true;
-      function toggle() {
-        on = !on;
-        if (on) { bgm.play().catch(function(){}); } else { bgm.pause(); }
+      if (!bgm || !btn) return;
+      var KEY = 'uno_bgm_off';
+      var on = localStorage.getItem(KEY) !== '1'; // 默认开，手动关过后记住
+      function playTry() { var p = bgm.play(); if (p && p.catch) p.catch(function(){}); }
+      function apply() {
         btn.classList.toggle('off', !on);
+        if (on) playTry(); else bgm.pause();
       }
-      btn.addEventListener('click', toggle);
-      function first() {
-        bgm.play().catch(function(){});
+      btn.addEventListener('click', function () {
+        on = !on;
+        localStorage.setItem(KEY, on ? '0' : '1');
+        apply();
+      });
+      document.addEventListener('pointerdown', function first() {
+        if (on) playTry();
         document.removeEventListener('pointerdown', first);
-      }
-      document.addEventListener('pointerdown', first);
+      });
+      // 开着但没出声（被浏览器拦截等）→ 每3秒自动补播，直到出声；手动关闭则停止
+      setInterval(function () {
+        if (on && bgm.paused) playTry();
+      }, 3000);
+      apply();
     })();
   </script>
 </body>
