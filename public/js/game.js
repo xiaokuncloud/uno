@@ -83,12 +83,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=27" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=28" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=27" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=28" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -98,7 +98,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=27'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=28'; });
   }
 
   // ---------- 对局日志 ----------
@@ -146,6 +146,17 @@
     if (text === _lastSpeakText && now - _lastSpeakTime < 3000) return;
     _lastSpeakText = text;
     _lastSpeakTime = now;
+    // 优先用浏览器内置TTS（无需网络，速度快）
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN'; u.rate = 1.15; u.volume = 0.9;
+        window.speechSynthesis.speak(u);
+        return;
+      } catch (e) {}
+    }
+    // 回退到TTS接口
     try {
       const a = new Audio('https://api.qb.foan.cc/api/tts?text=' + encodeURIComponent(text));
       a.volume = 0.85;
@@ -176,9 +187,12 @@
   function updateHintModeUI() {
     const b = $('btn-hint-mode');
     if (b) b.textContent = S.hintMode === 'auto' ? '自动' : '手动';
+    const b2 = $('btn-hint-mode-2');
+    if (b2) b2.textContent = S.hintMode === 'auto' ? '自动' : '手动';
     const hb = $('btn-hint');
     if (hb) hb.classList.toggle('hidden', S.hintMode === 'auto');
   }
+  function updateHintModeUI2() { updateHintModeUI(); }
   function applyHandHint() {
     const handEl = $('my-hand');
     const ui = S.ui;
@@ -246,9 +260,14 @@
     if (_colorCb) _colorCb(null);
     _colorCb = null;
   }
+  function openSettings() { $('settings-modal').classList.remove('hidden'); }
+  function closeSettings() { $('settings-modal').classList.add('hidden'); }
   window.cancelColorPick = cancelColorPick;
   window.toggleHint = toggleHint;
   window.toggleHintMode = toggleHintMode;
+  window.openSettings = openSettings;
+  window.closeSettings = closeSettings;
+  window.doSurrender = doSurrender;
   updateHintModeUI();
   // 防误触返回：对局中拦截浏览器后退/滑动返回，避免误退丢失进度
   history.pushState({ uno: 1 }, '', location.href);
@@ -566,7 +585,7 @@
     const n = ui.handCounts[opp] || 0;
     for (let i = 0; i < Math.min(n, 24); i++) {
       const mc = el('div', { class: 'mini-card' });
-      mc.innerHTML = '<img src="/assets/cards/back.webp?v=27" alt="">';
+      mc.innerHTML = '<img src="/assets/cards/back.webp?v=28" alt="">';
       oppCards.appendChild(mc);
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
@@ -604,7 +623,14 @@
 
     // 手牌：增量渲染（牌面没变不重建，减少闪烁）
     const handEl = $('my-hand');
-    const myHand = ui.selfHand || [];
+    const myHandRaw = ui.selfHand || [];
+    const COLOR_ORDER = { red: 0, yellow: 1, green: 2, blue: 3, wild: 4 };
+    const myHand = [...myHandRaw].sort((a, b) => {
+      const ca = COLOR_ORDER[a.color] != null ? COLOR_ORDER[a.color] : 5;
+      const cb = COLOR_ORDER[b.color] != null ? COLOR_ORDER[b.color] : 5;
+      if (ca !== cb) return ca - cb;
+      return String(a.value || '').localeCompare(String(b.value || ''));
+    });
     const handFinger = JSON.stringify(myHand);
     if (handEl._finger !== handFinger) {
       handEl._finger = handFinger;
@@ -761,6 +787,23 @@
       sendWs({ action: 'rematch' });
     }
   }
+  function doSurrender() {
+    if (S.mode === 'solo') {
+      const g = S.solo;
+      if (!g || g.phase !== 'playing') return;
+      g.phase = 'ended';
+      g.winner = 1; // AI赢
+      g.scores = g.scores || [0, 0];
+      g.scores[1] = (g.scores[1] || 0) + 1;
+      addLog('你认输了，AI 获胜', 'win');
+      soloRender();
+      showResult('AI 获胜', '你认输了。当前比分 ' + g.scores[0] + ':' + g.scores[1]);
+      speak('你认输了');
+    } else {
+      sendWs({ action: 'surrender' });
+    }
+    closeSettings();
+  }
   function goHome() {
     S._gameActive = false;
     S.hintOn = false;
@@ -887,9 +930,10 @@
   }
   // ---------- 单机模式 ----------
   function soloNewGame() {
+    const prevScores = (S.solo && S.solo.scores) ? S.solo.scores : [0, 0];
     clearSoloState();
     S.solo = UnoCore.createGame([S.name, 'AI']);
-    S.solo.scores = [0, 0];
+    S.solo.scores = prevScores;
     S.hintOn = false;
     syncHintBtn();
     S.log.length = 0;
@@ -999,7 +1043,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=27" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=28" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1252,7 +1296,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=27');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=28');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {

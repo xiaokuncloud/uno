@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>双人 UNO · 对局中</title>
-  <link rel="stylesheet" href="/css/style.css?v=27">
+  <link rel="stylesheet" href="/css/style.css?v=28">
 </head>
 <body>
   <audio id="bgm" loop preload="none"></audio>
@@ -27,6 +27,9 @@
         </button>
         <button class="icon-btn" onclick="openLog()" aria-label="游戏日志">
           <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openSettings()" aria-label="设置">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </span>
     </div>
@@ -171,6 +174,21 @@
       <button class="btn btn-online btn-sm" onclick="closeHelp()">知道了</button>
     </div>
   </div>
+  <!-- 设置面板 -->
+  <div class="modal-mask hidden" id="settings-modal">
+    <div class="modal">
+      <h2>设置</h2>
+      <div class="setting-row">
+        <span>提示模式</span>
+        <button class="mini-btn mode-btn" id="btn-hint-mode-2" onclick="toggleHintMode();updateHintModeUI2();">手动</button>
+      </div>
+      <div class="setting-row">
+        <span>认输本局</span>
+        <button class="btn btn-red btn-sm" onclick="doSurrender()">认输</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%" onclick="closeSettings()">关闭</button>
+    </div>
+  </div>
   <!-- 游戏日志弹窗 -->
   <div class="modal-mask hidden" id="log-modal">
     <div class="modal modal-scroll">
@@ -200,8 +218,8 @@
       });
     }
   </script>
-  <script src="/js/uno-core.js?v=27"></script>
-  <script src="/js/qrcode.min.js?v=27"></script>
-  <script src="/js/game.js?v=27"></script>
+  <script src="/js/uno-core.js?v=28"></script>
+  <script src="/js/qrcode.min.js?v=28"></script>
+  <script src="/js/game.js?v=28"></script>
 </body>
 </html>

@@ -604,6 +604,17 @@ export class UnoRoom {
         this.resolveChallenge(!!msg.decision);
         break;
       }
+      // 认输
+      case 'surrender': {
+        if (!this.game || this.game.phase !== 'playing') return;
+        const g = this.game;
+        const winner = 1 - selfIndex;
+        g.phase = 'ended';
+        g.winner = winner;
+        this.scores[winner] = (this.scores[winner] || 0) + 1;
+        this.pushState('surrender', `${this.players[selfIndex].name} 认输，${this.players[winner].name} 获胜！比分 ${this.scores[0]}:${this.scores[1]}`);
+        return;
+      }
       // 喊 UNO
       case 'callUno': {
         if (!this.game) return;

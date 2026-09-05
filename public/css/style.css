@@ -286,6 +286,14 @@ input:focus { border-color: #1d7fd6; }
 .hint-btn { background: rgba(244,180,0,.16); color: #b8860b; border: 1px solid rgba(244,180,0,.5); }
 .mode-btn { background: rgba(120,120,140,.18); color: #7a7d8f; border: 1px solid rgba(120,120,140,.4); min-width: 44px; }
 .mode-btn:active { background: rgba(120,120,140,.3); }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+.setting-row:last-of-type { border-bottom: none; }
+.setting-row span { font-size: 15px; color: #333; }
+.btn-red { background: #e63946; color: #fff; border: none; }
+.btn-red:active { background: #c62828; }
+/* 按钮区域优化：允许换行，防止错位 */
+.my-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
+.my-actions .mini-btn, .my-actions .deck-btn { flex-shrink: 0; }
 .hint-btn.active { background: #f4b400; color: #fff; box-shadow: 0 0 10px rgba(244,180,0,.5); }
 /* 选颜色：禁止项 */
 .color-item.no-color { border: none; background: transparent; }
