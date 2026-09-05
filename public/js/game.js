@@ -83,12 +83,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=28" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=29" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=28" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=29" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -98,7 +98,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=28'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=29'; });
   }
 
   // ---------- 对局日志 ----------
@@ -585,7 +585,7 @@
     const n = ui.handCounts[opp] || 0;
     for (let i = 0; i < Math.min(n, 24); i++) {
       const mc = el('div', { class: 'mini-card' });
-      mc.innerHTML = '<img src="/assets/cards/back.webp?v=28" alt="">';
+      mc.innerHTML = '<img src="/assets/cards/back.webp?v=29" alt="">';
       oppCards.appendChild(mc);
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
@@ -1043,7 +1043,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=28" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=29" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1296,7 +1296,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=28');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=29');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {

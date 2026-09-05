@@ -286,14 +286,26 @@ input:focus { border-color: #1d7fd6; }
 .hint-btn { background: rgba(244,180,0,.16); color: #b8860b; border: 1px solid rgba(244,180,0,.5); }
 .mode-btn { background: rgba(120,120,140,.18); color: #7a7d8f; border: 1px solid rgba(120,120,140,.4); min-width: 44px; }
 .mode-btn:active { background: rgba(120,120,140,.3); }
-.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-.setting-row:last-of-type { border-bottom: none; }
-.setting-row span { font-size: 15px; color: #333; }
 .btn-red { background: #e63946; color: #fff; border: none; }
 .btn-red:active { background: #c62828; }
-/* 按钮区域优化：允许换行，防止错位 */
 .my-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
 .my-actions .mini-btn, .my-actions .deck-btn { flex-shrink: 0; }
+/* 设置面板美化 */
+.settings-modal { padding: 0; overflow: hidden; border-radius: 18px; }
+.settings-header { display: flex; align-items: center; gap: 10px; padding: 18px 20px 14px; border-bottom: 1px solid #f0f0f0; }
+.settings-header h2 { margin: 0; font-size: 18px; color: #333; }
+.settings-body { padding: 8px 20px; }
+.setting-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f5f5f5; }
+.setting-item:last-of-type { border-bottom: none; }
+.setting-info { display: flex; flex-direction: column; gap: 3px; flex: 1; padding-right: 12px; }
+.setting-title { font-size: 15px; font-weight: 600; color: #333; }
+.setting-desc { font-size: 12px; color: #999; line-height: 1.4; }
+.setting-toggle { min-width: 56px; padding: 7px 14px; border-radius: 20px; border: 1.5px solid #ddd; background: #f8f8f8; color: #666; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.setting-toggle:active { transform: scale(.95); }
+.setting-surrender { padding: 7px 18px; border-radius: 20px; border: none; background: linear-gradient(135deg, #ff6b6b, #e63946); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(230,57,70,.3); transition: all .2s; }
+.setting-surrender:active { transform: scale(.95); box-shadow: 0 1px 4px rgba(230,57,70,.3); }
+.settings-close { width: 100%; padding: 14px; border: none; border-top: 1px solid #f0f0f0; background: #fafafa; color: #666; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .2s; }
+.settings-close:active { background: #f0f0f0; }
 .hint-btn.active { background: #f4b400; color: #fff; box-shadow: 0 0 10px rgba(244,180,0,.5); }
 /* 选颜色：禁止项 */
 .color-item.no-color { border: none; background: transparent; }
