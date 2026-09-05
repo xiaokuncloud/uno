@@ -223,12 +223,16 @@ export class UnoRoom {
     await this.state.storage.setAlarm(Date.now() + 6 * 3600 * 1000);
   }
   async alarm() {
-    // 还有在线玩家则不销毁
+    // 双人游戏：在线玩家<2则销毁(一方断开60秒未重连)
     const online = this.players.filter((p) => !p.offline && p.ws);
-    if (online.length > 0) {
+    if (online.length >= 2) {
       await this.state.storage.deleteAlarm();
       return;
     }
+    // 通知剩余在线玩家房间销毁
+    online.forEach((p) => {
+      try { p.ws.send(JSON.stringify({ action: 'roomDestroyed', reason: '对方离开超过60秒，房间已销毁' })); } catch (e) {}
+    });
     await this.state.storage.delete('room');
     this.players = [];
     this.game = null;
@@ -672,9 +676,11 @@ export class UnoRoom {
     if (idx < 0) return;
     const other = 1 - idx;
     if (this.players[other] && this.players[other].ws && !this.players[other].offline) {
-      this.send(this.players[other].ws, { action: 'peerLeft', name: this.players[idx].name, destroyIn: 360, rejoinable: true });
+      this.send(this.players[other].ws, { action: 'peerLeft', name: this.players[idx].name, destroyIn: 60, rejoinable: true });
     }
     this.players[idx].offline = true;
+    // 60秒后若未重连则销毁房间
+    this.state.storage.setAlarm(Date.now() + 60 * 1000);
     if (this.pendingChallenge && this.pendingChallenge.challenger === idx) {
       // 质疑方离线：按不质疑处理，避免卡局
       this.resolveChallenge(false);
