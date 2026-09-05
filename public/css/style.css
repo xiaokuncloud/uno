@@ -201,11 +201,14 @@ input:focus { border-color: #1d7fd6; }
 /* 牌桌外的全局对局提示条 */
 .game-event {
   text-align: center; padding: 7px 14px; margin: 2px 12px 4px;
-  font-size: 14px; font-weight: 600; color: #444; min-height: 20px;
+  font-size: 14px; font-weight: 600; color: #444;
+  min-height: 44px; max-height: 44px;
+  display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,.82); border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  overflow: hidden;
 }
-.game-event #event-info { display: inline; }
+.game-event #event-info { display: inline; line-height: 1.35; }
 .deck-btn {
   margin-top: 6px; background: #2b2f3a; color: #fff;
   border: none; border-radius: 999px; padding: 10px 22px;
