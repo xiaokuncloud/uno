@@ -474,7 +474,27 @@ export class UnoRoom {
           }
           return;
         }
-        if (this.players.length >= 2) { this.send(ws, { action: 'error', msg: '房间已满（仅支持双人）' }); return; }
+        // 3) 有离线槽位则分配重连（一方离开后重新进入）
+        const offlineSlot = this.players.findIndex((p) => p.offline);
+        if (offlineSlot >= 0) {
+          this.players[offlineSlot].ws = ws;
+          this.players[offlineSlot].offline = false;
+          this.players[offlineSlot].name = joinName || this.players[offlineSlot].name;
+          if (this.pendingChallenge) {
+            const pc = this.pendingChallenge;
+            const op = this.players[pc.opp];
+            if (op && op.ws && !op.offline) this.send(op.ws, { action: 'offerChallenge', byName: this.players[pc.target].name });
+          }
+          if (this.game) {
+            this.pushState('rejoin', `${this.players[offlineSlot].name} 重新连接`);
+          } else {
+            this.send(ws, { action: 'joined', playerIndex: offlineSlot, playerNames: this.players.map((p) => p.name), reconnected: true });
+            const other = this.players.find((p) => !p.offline && p.ws !== ws);
+            if (other) this.send(other.ws, { action: 'peerJoined', playerNames: this.players.map((p) => p.name) });
+          }
+          return;
+        }
+        if (this.players.filter((p) => !p.offline).length >= 2) { this.send(ws, { action: 'error', msg: '房间已满（仅支持双人）' }); return; }
         if (this.game) { this.send(ws, { action: 'error', msg: '游戏已开始，无法中途加入' }); return; }
         if (this.players.length === 0) {
           this.players.push({ ws, name: joinName || '玩家1', index: 0, offline: false });
