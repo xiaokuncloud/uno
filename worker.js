@@ -440,6 +440,8 @@ export class UnoRoom {
             slotP.ws = ws;
             slotP.offline = false;
             slotP.name = joinName || slotP.name;
+            this.state.storage.deleteAlarm();
+            this.broadcast({ action: 'peerReconnected', name: slotP.name, playerIndex: slotP.index });
             if (this.pendingChallenge) {
               const pc = this.pendingChallenge;
               const op = this.players[pc.opp];
@@ -460,6 +462,8 @@ export class UnoRoom {
         if (slot >= 0) {
           this.players[slot].ws = ws;
           this.players[slot].offline = false;
+          this.state.storage.deleteAlarm();
+          this.broadcast({ action: 'peerReconnected', name: this.players[slot].name, playerIndex: slot });
           if (this.pendingChallenge) {
             const pc = this.pendingChallenge;
             const op = this.players[pc.opp];
@@ -480,6 +484,8 @@ export class UnoRoom {
           this.players[offlineSlot].ws = ws;
           this.players[offlineSlot].offline = false;
           this.players[offlineSlot].name = joinName || this.players[offlineSlot].name;
+          this.state.storage.deleteAlarm();
+          this.broadcast({ action: 'peerReconnected', name: this.players[offlineSlot].name, playerIndex: offlineSlot });
           if (this.pendingChallenge) {
             const pc = this.pendingChallenge;
             const op = this.players[pc.opp];

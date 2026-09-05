@@ -83,12 +83,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=31" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=32" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=31" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=32" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -98,7 +98,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=31'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=32'; });
   }
 
   // ---------- 对局日志 ----------
@@ -403,7 +403,37 @@
 
   // ---------- WebSocket ----------
   function sendWs(obj) {
-    if (S.ws && S.ws.readyState === WebSocket.OPEN) S.ws.send(JSON.stringify(obj));
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify(obj));
+    } else if (S.mode !== 'solo') {
+      toast('正在重连，请稍候…');
+    }
+  }
+  function startReconnectCountdown(name, seconds) {
+    stopReconnectCountdown();
+    S._reconnPeer = name;
+    S._reconnLeft = seconds;
+    updateReconnectToast();
+    S._reconnTimer = setInterval(() => {
+      S._reconnLeft--;
+      if (S._reconnLeft <= 0) {
+        stopReconnectCountdown();
+        toast(name + ' 离开超过60秒，房间已销毁');
+        speak('房间已解散');
+        localStorage.removeItem('uno_room_id');
+        setTimeout(() => { location.href = '/'; }, 1200);
+      } else {
+        updateReconnectToast();
+      }
+    }, 1000);
+  }
+  function updateReconnectToast() {
+    toast(S._reconnPeer + ' 已断开，等待重连 ' + S._reconnLeft + ' 秒', 1100);
+  }
+  function stopReconnectCountdown() {
+    if (S._reconnTimer) { clearInterval(S._reconnTimer); S._reconnTimer = null; }
+    S._reconnPeer = null;
+    S._reconnLeft = 0;
   }
   function connectOnline() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -543,8 +573,14 @@
         break;
       case 'peerLeft':
         appendChat('系统', m.name + ' 暂时离线，60 秒内可自动重连', 'sys');
-        toast(m.name + ' 暂时离线，对方可在 60 秒内重连');
         speak(m.name + '离开了');
+        startReconnectCountdown(m.name, m.destroyIn || 60);
+        break;
+      case 'peerReconnected':
+        stopReconnectCountdown();
+        appendChat('系统', m.name + ' 已重新连接', 'sys');
+        toast(m.name + ' 已重连');
+        speak(m.name + '回来了');
         break;
       case 'roomDestroyed':
         toast('房间已销毁，即将返回首页');
@@ -595,7 +631,7 @@
     const n = ui.handCounts[opp] || 0;
     for (let i = 0; i < Math.min(n, 24); i++) {
       const mc = el('div', { class: 'mini-card' });
-      mc.innerHTML = '<img src="/assets/cards/back.webp?v=31" alt="">';
+      mc.innerHTML = '<img src="/assets/cards/back.webp?v=32" alt="">';
       oppCards.appendChild(mc);
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
@@ -1053,7 +1089,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=31" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=32" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1306,7 +1342,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=31');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=32');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {
