@@ -306,6 +306,8 @@ input:focus { border-color: #1d7fd6; }
 .setting-surrender:active { transform: scale(.95); box-shadow: 0 1px 4px rgba(230,57,70,.3); }
 .settings-close { width: 100%; padding: 14px; border: none; border-top: 1px solid #f0f0f0; background: #fafafa; color: #666; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .2s; }
 .settings-close:active { background: #f0f0f0; }
+.setting-link { padding: 7px 16px; border-radius: 20px; border: 1.5px solid #e0e0e0; background: #fff; color: #666; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.setting-link:active { transform: scale(.95); background: #f5f5f5; }
 .hint-btn.active { background: #f4b400; color: #fff; box-shadow: 0 0 10px rgba(244,180,0,.5); }
 /* 选颜色：禁止项 */
 .color-item.no-color { border: none; background: transparent; }
