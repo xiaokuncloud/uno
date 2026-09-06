@@ -440,7 +440,12 @@ export class UnoRoom {
         // 1) 优先按 selfIndex 精确重连（防止刷新时撞名匹配到房主槽位）
         if (msg.selfIndex != null && msg.selfIndex >= 0 && msg.selfIndex < 2) {
           const slotP = this.players[msg.selfIndex];
-          if (slotP && slotP.offline) {
+          if (slotP && (slotP.offline || slotP.ws !== ws)) {
+            // 旧ws还在(刷新时序)：主动关闭，标记offline后重连
+            if (slotP.ws && slotP.ws !== ws) {
+              try { slotP.ws.close(); } catch (e) {}
+              slotP.offline = true;
+            }
             slotP.ws = ws;
             slotP.offline = false;
             slotP.name = joinName || slotP.name;

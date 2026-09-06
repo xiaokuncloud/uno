@@ -83,12 +83,12 @@
     const cls = ['uno-card'];
     if (opts.faceDown) {
       cls.push('face-down');
-      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=34" alt=""></div>`;
+      return `<div class="${cls.join(' ')}"><img src="/assets/cards/back.webp?v=35" alt=""></div>`;
     }
     cls.push(cardClass(card));
     if (opts.highlight) cls.push('highlight');
     if (opts.disabled) cls.push('disabled');
-    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=34" alt=""></div>`;
+    return `<div class="${cls.join(' ')}"><img src="/assets/cards/${cardImg(card)}?v=35" alt=""></div>`;
   }
 
   // ---------- 卡牌预加载 ----------
@@ -98,7 +98,7 @@
       for (let v = 0; v <= 9; v++) files.push(c + '_' + v + '.png');
       files.push(c + '_2p.webp', c + '_rev.webp', c + '_skip.webp');
     });
-    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=34'; });
+    files.forEach((f) => { const im = new Image(); im.src = '/assets/cards/' + f + '?v=35'; });
   }
 
   // ---------- 对局日志 ----------
@@ -435,6 +435,10 @@
     S._reconnPeer = null;
     S._reconnLeft = 0;
   }
+  // 页面卸载时主动关闭WebSocket，确保后端及时标记offline（防刷新后重连失败）
+  window.addEventListener('beforeunload', () => {
+    if (S.ws) { try { S.ws.close(); } catch (e) {} }
+  });
   function connectOnline() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     S.ws = new WebSocket(`${proto}://${location.host}/ws?room=${encodeURIComponent(S.roomId || 'lobby')}`);
@@ -468,26 +472,40 @@
       if (S.mode !== 'solo') {
         appendChat('系统', '连接断开，正在尝试重连…', 'sys');
         if (S._reconnTimer) clearTimeout(S._reconnTimer);
-        if ((S._reconnCount || 0) < 4) {
+        if ((S._reconnCount || 0) < 8) {
           S._reconnCount = (S._reconnCount || 0) + 1;
-          S._reconnTimer = setTimeout(() => connectOnline(), 1600);
+          S._reconnTimer = setTimeout(() => connectOnline(), 1000);
         } else {
           toast('重连失败，请刷新页面');
         }
       }
     };
-    S.ws.onerror = () => toast('无法连接服务器，请刷新重试');
-    // 心跳：每 15s 发一条消息，防止 CF 空闲回收 WebSocket 导致房主“悄悄离线”
+    S.ws.onerror = () => {
+      toast('连接异常，正在重连…');
+      try { S.ws.close(); } catch (e) {}
+    };
+    // 心跳：每 10s 发 ping，25s 未收到 pong 判定半开连接，主动关闭触发重连
     clearInterval(S._hb);
+    S._lastPong = Date.now();
     S._hb = setInterval(() => {
       if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+        const now = Date.now();
+        if (now - S._lastPong > 25000) {
+          // 半开连接：主动关闭触发 onclose 重连
+          appendChat('系统', '连接无响应，正在重连…', 'sys');
+          try { S.ws.close(); } catch (e) {}
+          return;
+        }
         S.ws.send(JSON.stringify({ action: 'ping', selfIndex: S.selfIndex }));
       }
-    }, 15000);
+    }, 10000);
   }
 
   function handleOnlineMsg(m) {
     switch (m.action) {
+      case 'pong':
+        S._lastPong = Date.now();
+        break;
       case 'roomCreated':
         S.selfIndex = m.playerIndex;
         S.roomId = m.roomId;
@@ -637,7 +655,7 @@
     const n = ui.handCounts[opp] || 0;
     for (let i = 0; i < Math.min(n, 24); i++) {
       const mc = el('div', { class: 'mini-card' });
-      mc.innerHTML = '<img src="/assets/cards/back.webp?v=34" alt="">';
+      mc.innerHTML = '<img src="/assets/cards/back.webp?v=35" alt="">';
       oppCards.appendChild(mc);
     }
     $('opp-status').textContent = n + ' 张手牌' + (ui.uno[opp] ? ' · UNO已喊' : '');
@@ -1095,7 +1113,7 @@
       const w = 46, h = 70;
       const clone = document.createElement('div');
       clone.className = 'uno-card face-down';
-      clone.innerHTML = '<img src="/assets/cards/back.webp?v=34" alt="">';
+      clone.innerHTML = '<img src="/assets/cards/back.webp?v=35" alt="">';
       const oppEl = document.querySelector('.opp-cards');
       const endX = oppEl ? (oppEl.getBoundingClientRect().right - w) : (to.left + 60);
       Object.assign(clone.style, {
@@ -1348,7 +1366,7 @@
   var KEY = 'uno_bgm_off';
   var on = localStorage.getItem(KEY) !== '1';
   function playTry() {
-    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=34');
+    if (!bgm.getAttribute('src')) bgm.setAttribute('src', '/assets/bgm.mp3?v=35');
     var p = bgm.play(); if (p && p.catch) p.catch(function(){});
   }
   function apply() {
